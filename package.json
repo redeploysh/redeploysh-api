@@ -1,0 +1,17 @@
+{
+  "name": "redeploy.sh-api",
+  "version": "1.0.0",
+  "description": "backend endpoints for redeploy.sh",
+  "scripts": {
+    "test": "npm run mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/redeploy-sh/redeploysh-api.git"
+  },
+  "keywords": [
+    "redeploy.sh"
+  ],
+  "author": "Patrick D. Killourhy",
+  "homepage": "https://github.com/redeploy-sh/redeploysh-api#readme"
+}
