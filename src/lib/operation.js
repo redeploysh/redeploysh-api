@@ -6,13 +6,15 @@ const writeOperations = [
 ]
 
 class Operation {
-    constructor({ id, type, op, key, data }) {
-        this.id = id
+    constructor(operation, id) {
+        const { type, op, key, data } = operation
         this.type = this.splitType(type).type
         this.version = this.splitType(type).version
         this.op = op
         this.key = key
         this.data = data
+        this.returnValues = operation['return']
+        this.id = id
     }
 
     isReadOperation() {
@@ -25,12 +27,12 @@ class Operation {
         }
         this.substitutions = []
         Object.keys(this.key || {}).filter((keyProperty) => {
-            const substitutions = this.key[keyProperty].match(/(\$\{[\w-]+\:[\w-]+\})/g) || []
-            substitutions.forEach(substitution => this.substitutions.push(substitution.match(/\$\{([\w-]+)\:([\w-]+)\}/)[1]))
+            const substitutions = this.key[keyProperty].match(/(\$\{[\w-]+\})/g) || []
+            substitutions.forEach(substitution => this.substitutions.push(substitution.match(/\$\{([\w-]+)\}/)[1]))
         })
         Object.keys(this.data || {}).filter((dataProperty) => {
-            const substitutions = this.data[dataProperty].match(/(\$\{[\w-]+\:[\w-]+\})/g) || []
-            substitutions.forEach(substitution => this.substitutions.push(substitution.match(/\$\{([\w-]+)\:([\w-]+)\}/)[1]))
+            const substitutions = this.data[dataProperty].match(/(\$\{[\w-]+\})/g) || []
+            substitutions.forEach(substitution => this.substitutions.push(substitution.match(/\$\{([\w-]+)\}/)[1]))
         })
         return this.substitutions
     }
@@ -40,12 +42,6 @@ class Operation {
             type: type.split(':')[0],
             version: type.split(':')[1]
         }
-    }
-
-    dependsOn(otherOperation) {
-        const { id } = otherOperation
-        const dependencies = this.getDependencies()
-        return dependencies.filter(dependency => dependency === id).length > 0
     }
 }
 

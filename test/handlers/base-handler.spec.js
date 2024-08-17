@@ -53,7 +53,7 @@ describe('BaseHandler tests', function() {
                 headers: 'headers',
                 message: 'msg'
             }).should.be.eql({
-                statusCode: 500,
+                statusCode: 503,
                 headers: 'headers',
                 body: 'msg'
             })

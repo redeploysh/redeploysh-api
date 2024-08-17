@@ -45,12 +45,12 @@ describe('Operation', function() {
                 type: 'type:version',
                 op: 'read',
                 key: {
-                    someProperty: '${some-id:some-property-name}',
-                    someOtherProperty: '${some-other-id:some-other-property-name}'
+                    someProperty: '${some-property-name}',
+                    someOtherProperty: '${some-other-property-name}'
                 }
             })
             return op.getDependencies().should.be.eql([
-                'some-id', 'some-other-id'
+                'some-property-name', 'some-other-property-name'
             ])
         })
 
@@ -60,61 +60,16 @@ describe('Operation', function() {
                 type: 'type:version',
                 op: 'read',
                 data: {
-                    someProperty: '${some-id:some-property-name}',
-                    someOtherProperty: '${some-other-id:some-other-property-name}',
+                    someProperty: '${some-property-name}',
+                    someOtherProperty: '${some-other-property-name}',
                     someIndependentProperty: 'value',
                 }
             })
             return op.getDependencies().should.be.eql([
-                'some-id', 'some-other-id'
+                'some-property-name', 'some-other-property-name'
             ])
         })
     })
 
-    describe('#dependsOn', function() {
-        it('should be true if there is a dependency', function() {
-            const op1 =
-                new Operation({
-                    id: 'some-id',
-                    type: 'type:version',
-                    op: 'read',
-                    key: {
-                        someProperty: '${some-other-id:someOtherProperty}'
-                    }
-                })
-            const op2 =
-                new Operation({
-                    id: 'some-other-id',
-                    type: 'type:version',
-                    op: 'read',
-                    key: {
-                        someOtherProperty: 'value'
-                    }
-                })
-            return op1.dependsOn(op2).should.be.true
-        })
-
-        it('should be false if there is no dependency', function() {
-            const op1 =
-                new Operation({
-                    id: 'some-id',
-                    type: 'type:version',
-                    op: 'read',
-                    key: {
-                        someProperty: '${some-third-id:someOtherProperty}'
-                    }
-                })
-            const op2 =
-                new Operation({
-                    id: 'some-other-id',
-                    type: 'type:version',
-                    op: 'read',
-                    key: {
-                        someOtherProperty: 'value'
-                    }
-                })
-            return op1.dependsOn(op2).should.be.false
-        })
-    })
 })
 
