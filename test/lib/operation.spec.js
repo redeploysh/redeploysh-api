@@ -1,14 +1,9 @@
 const chai = require('chai'),
     chaiAsPromised = require('chai-as-promised'),
-    { createSandbox } = require('sinon'),
-    sinonChai = require('sinon-chai'),
-    { Operation } = require('../../src/framework/operation')
+    { Operation } = require('../../src/lib/operation')
 
 chai.should()
 chai.use(chaiAsPromised)
-chai.use(sinonChai)
-
-const sinon = createSandbox()
 
 describe('Operation', function() {
     describe('#isReadOperation', function() {
@@ -38,7 +33,13 @@ describe('Operation', function() {
     })
 
     describe('#getDependencies', function() {
-        it('should return all the dependency ids', function() {
+        it('should use the cached value', function() {
+            const op = new Operation({ type: 'type:version' })
+            op.substitutions = 'value'
+            return op.getDependencies().should.be.eql('value')
+        })
+
+        it('should return all the dependency ids for keys', function() {
             const op = new Operation({
                 id: 'some-id',
                 type: 'type:version',
@@ -46,6 +47,22 @@ describe('Operation', function() {
                 key: {
                     someProperty: '${some-id:some-property-name}',
                     someOtherProperty: '${some-other-id:some-other-property-name}'
+                }
+            })
+            return op.getDependencies().should.be.eql([
+                'some-id', 'some-other-id'
+            ])
+        })
+
+        it('should return all the dependency ids for data', function() {
+            const op = new Operation({
+                id: 'some-id',
+                type: 'type:version',
+                op: 'read',
+                data: {
+                    someProperty: '${some-id:some-property-name}',
+                    someOtherProperty: '${some-other-id:some-other-property-name}',
+                    someIndependentProperty: 'value',
                 }
             })
             return op.getDependencies().should.be.eql([

@@ -4,7 +4,8 @@
     "description": "backend endpoints for redeploy.sh",
     "scripts": {
         "test": "./node_modules/.bin/mocha \"test/**/*.spec.js\"",
-        "build": "rm -rf build/ && mkdir build && cp -R ./src build/ && cp package.json build/ && cd build && npm install --omit=dev && npm prune --omit=dev && zip -r redeploy.sh-api.zip package.json src node_modules/"
+        "build": "rm -rf build/ && mkdir build && cp -R ./src build/ && cp package.json build/ && cd build && npm install --omit=dev && npm prune --omit=dev && zip -r redeploy.sh-api.zip package.json src node_modules/",
+        "coverage": "nyc --reporter=lcov --reporter=text npm test "
     },
     "repository": {
         "type": "git",
@@ -25,6 +26,10 @@
         "chai": "^4.3.7",
         "chai-as-promised": "^7.1.1",
         "sinon-chai": "^3.7.0",
-        "@stylistic/eslint-plugin-js": "^2.3.0"
+        "@stylistic/eslint-plugin-js": "^2.3.0",
+        "@aws-sdk/lib-dynamodb": "^3.632.0",
+        "@aws-sdk/client-dynamodb": "^3.632.0",
+        "aws-sdk-client-mock": "^4.0.1",
+        "nyc": "^17.0.0"
     }
 }

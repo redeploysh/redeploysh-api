@@ -1,8 +1,10 @@
-const { Graph } = require('graph-data-structure')
-
 class OperationSorter {
+    constructor({ graph }) {
+        this.graph = graph
+    }
+
     sortOperations(operations) {
-        const opsGraph = Graph()
+        const opsGraph = this.graph()
         Object.values(operations).forEach((op) => {
             opsGraph.addNode(op.id)
             op.getDependencies().forEach((dependencyId) => {

@@ -2,9 +2,9 @@ const chai = require('chai'),
     chaiAsPromised = require('chai-as-promised'),
     { createSandbox } = require('sinon'),
     sinonChai = require('sinon-chai'),
-    ApiGatewayJsonParser = require('../../../src/framework/parsers/api-gateway-json-parser'),
-    { InvalidRequestError } = require('../../../src/errors'),
-    Logger = require('../../../src/framework/logger')
+    ApiGatewayJsonParser = require('../../src/parsers/api-gateway-json-parser'),
+    { InvalidRequestError } = require('../../src/errors'),
+    Logger = require('../../src/lib/logger')
 
 chai.should()
 chai.use(chaiAsPromised)

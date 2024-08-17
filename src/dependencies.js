@@ -1,30 +1,47 @@
-const parsers = require('./framework/parsers'),
+const { Router } = require('./framework'),
     handlers = require('./handlers'),
-    Logger = require('./framework/logger'),
-    Router = require('./framework/router')
+    { DynamoAdaptor, Logger, OperationSorter } = require('./lib'),
+    parsers = require('./parsers'),
+    { Graph } = require('graph-data-structure'),
+    { DynamoDBClient } = require('@aws-sdk/client-dynamodb')
 
 const routes = {
-    'GET/': {
+    'GET/v1/types/{type}/{version}': {
+        parser: 'ApiGatewayPathParamsParser',
+        handler: 'TypeInfoHandler'
+    },
+    'POST/v1/data': {
         parser: 'ApiGatewayJsonParser',
-        handler: 'NotImplementedHandler'
+        handler: 'BatchOperationsHandler'
     }
 }
 
 module.exports = {
-    logger: c => new Logger(),
-    router: c => new Router({
-        routes: c.resolve('routes')
+    logger: () => new Logger(),
+    router: inj => new Router({
+        routes: inj.resolve('routes')
     }),
-    parsers: {
-        ApiGatewayJsonParser: c => new parsers.ApiGatewayJsonParser({ logger: c.resolve('logger') })
-    },
+    parsers: parsers.map(Parser => (inj => (new Parser({ logger: inj.resolve('logger') })))),
     handlers: {
-        NotImplementedHandler: c => new handlers.NotImplementedHandler({ logger: c.resolve('logger') })
+        NotImplementedHandler: inj => new handlers.NotImplementedHandler({ logger: inj.resolve('logger') }),
+        BatchOperationsHandler: inj => new handlers.BatchOperationsHandler({
+            logger: inj.resolve('logger'),
+            dynamoAdaptor: inj.resolve('dynamoAdaptor'),
+            operationSorter: inj.resolve('operationSorter'),
+            typeRegistry: inj.resolve('typeRegistry')
+        }),
+        TypeInfoHandler: inj => new handlers.TypeInfoHandler({
+            typeRegistry: typeRegistry,
+            logger: inj.resolve('logger')
+        })
     },
-    routes: {
-        'GET/': {
-            parser: c.resolve('ApiGatewayJsonParser'),
-            handler: c.resolve('DummyHandler')
-        }
-    }
+    routes,
+    dynamoAdaptor: inj => new DynamoAdaptor({
+        dynamoDBClient: new DynamoDBClient({}),
+        typeRegistry: inj.resolve('typeRegistry')
+    }),
+    operationSorter: new OperationSorter({
+        graph: Graph
+    }),
+    typeRegistry: new TypeRegistry()
 }

@@ -2,8 +2,9 @@ const chai = require('chai'),
     chaiAsPromised = require('chai-as-promised'),
     { createSandbox } = require('sinon'),
     sinonChai = require('sinon-chai'),
-    { Operation } = require('../../src/framework/operation'),
-    { OperationSorter } = require('../../src/framework/operation-sorter')
+    { Operation } = require('../../src/lib/operation'),
+    { OperationSorter } = require('../../src/lib/operation-sorter'),
+    { Graph } = require('graph-data-structure')
 
 chai.should()
 chai.use(chaiAsPromised)
@@ -33,7 +34,7 @@ describe('OperationsSorter', function() {
                     }
                 })
 
-            const sorter = new OperationSorter()
+            const sorter = new OperationSorter({ graph: Graph })
             return chai.expect(() => sorter.sortOperations({
                 'some-id': op1,
                 'some-other-id': op2
@@ -69,7 +70,7 @@ describe('OperationsSorter', function() {
                     }
                 })
 
-            const sorter = new OperationSorter()
+            const sorter = new OperationSorter({ graph: Graph })
             return chai.expect(() => sorter.sortOperations({
                 'some-id': op1,
                 'some-intermediate-id': op2,
@@ -121,7 +122,7 @@ describe('OperationsSorter', function() {
                 }
             })
 
-            const sorter = new OperationSorter()
+            const sorter = new OperationSorter({ graph: Graph })
             const sorted = sorter.sortOperations({
                 op5, op1, op3, op2, op4
             })
