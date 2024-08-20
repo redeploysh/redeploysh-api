@@ -1,0 +1,123 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  redeploy.sh-api
+
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Resources:
+  Gateway:
+    Type: AWS::Serverless::Api
+    DependsOn:
+      - Lambda
+      - AuthorizerLambda
+    Properties:
+      Name: !Sub "${AWS::StackName}"
+      StageName: "stage"
+      MethodSettings:
+        - ResourcePath: /*
+          HttpMethod: "*"
+          MetricsEnabled: false
+      Auth:
+        ApiKeyRequired: false
+        Authorizers:
+          RedeployAuthorizer:
+            FunctionArn: !GetAtt AuthorizerLambda.Arn
+            FunctionPayloadType: REQUEST
+            Identity:
+              Headers:
+                - Authorization
+              ReauthorizeEvery: 0
+        DefaultAuthorizer: RedeployAuthorizer
+      GatewayResponses:
+        ACCESS_DENIED:
+          StatusCode: 401
+          ResponseTemplates:
+            "application/json; charset=UTF-8": '{"statusCode":"401","message":"$context.authorizer.error.message"}'
+
+  AuthorizerLambda:
+    Type: AWS::Serverless::Function
+    DependsOn: AuthorizerLambdaRole
+    Properties:
+      AutoPublishAlias: release
+      CodeUri: ../build/redeploy.sh-api.zip
+      Handler: src/authorizer/index.handler
+      Runtime: nodejs20.x
+      Role: !GetAtt AuthorizerLambdaRole.Arn
+
+  AuthorizerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AuthorizerLambdaRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+
+  Lambda:
+    Type: AWS::Serverless::Function
+    DependsOn: LambdaRole
+    Properties:
+      AutoPublishAlias: release
+      CodeUri: ../build/redeploy.sh-api.zip
+      Handler: src/index.handler
+      Runtime: nodejs20.x
+      Role: !GetAtt LambdaRole.Arn
+      Events:
+        GetType:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Gateway
+            Path: /types/{type}/{version}
+            Method: get
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonAPIGatewayInvokeFullAccess
+        - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+
+  DataTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: type
+          AttributeType: S
+        - AttributeName: version
+          AttributeType: S
+        - AttributeName: keyPropertyA
+          AttributeType: S
+        - AttributeName: keyPropertyB
+          AttributeType: S
+        - AttributeName: keyPropertyC
+          AttributeType: S
+        - AttributeName: data
+          AttributeType: S
+        - AttributeName: archived
+          AttributeType: S
+      KeySchema:
+        - AttributeName: type
+          KeyType: HASH
+        - AttributeName: version
+          KeyType: HASH
+        - AttributeName: keyPropertyA
+          KeyType: HASH
+        - AttributeName: keyPropertyB
+          KeyType: HASH
+        - AttributeName: keyPropertyC
+          KeyType: HASH
+        - AttributeName: archived
+          KeyType: HASH

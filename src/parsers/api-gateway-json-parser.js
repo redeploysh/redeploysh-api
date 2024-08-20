@@ -1,4 +1,4 @@
-const { InvalidRequestError } = require('../../errors')
+const { InvalidRequestError } = require('../errors')
 
 class ApiGatewayJsonParser {
 

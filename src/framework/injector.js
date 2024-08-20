@@ -1,4 +1,4 @@
-class Container {
+class Injector {
     constructor(dependencies) {
         this.dependencies = dependencies
     }
@@ -8,4 +8,4 @@ class Container {
     }
 }
 
-module.exports = { Container }
+module.exports = { Injector }
