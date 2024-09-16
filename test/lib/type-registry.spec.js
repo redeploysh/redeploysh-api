@@ -1,6 +1,6 @@
 const chai = require('chai'),
     chaiAsPromised = require('chai-as-promised'),
-    TypeRegistry = require('../../src/framework/type-registry'),
+    TypeRegistry = require('../../src/lib/type-registry'),
     { InvalidTypeError } = require('../../src/errors')
 
 chai.should()
@@ -10,9 +10,8 @@ describe('TypeRegistry tests', function() {
     describe('#getType', function() {
         it('should return the key property names', function() {
             const typeRegistry = new TypeRegistry()
-            return typeRegistry.getType('test-type', 'test-version').should.be.eql({
-                keyPropertyA: 'some-propA',
-                keyPropertyB: 'some-propB'
+            return typeRegistry.getType('user', '1.0.0').should.be.eql({
+                keyPropertyA: 'emailAddress'
             })
         })
 

@@ -1,6 +1,7 @@
 module.exports = {
-    DynamoDBAdaptor: require('./dynamo-adaptor'),
-    Logger: require('./logger'),
+    DynamoAdaptor: require('./dynamo-adaptor'),
     Operation: require('./operation'),
-    OperationSorter: require('./operation-sorter')
+    OperationProcessor: require('./operation-processor'),
+    OperationSorter: require('./operation-sorter'),
+    TypeRegistry: require('./type-registry')
 }

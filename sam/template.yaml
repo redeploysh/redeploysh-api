@@ -2,6 +2,10 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   redeploy.sh-api
 
+Parameters:
+  DataTableName:
+    Type: String
+
 Transform:
   - AWS::Serverless-2016-10-31
 
@@ -10,7 +14,7 @@ Resources:
     Type: AWS::Serverless::Api
     DependsOn:
       - Lambda
-      - AuthorizerLambda
+      # - AuthorizerLambda
     Properties:
       Name: !Sub "${AWS::StackName}"
       StageName: "stage"
@@ -18,46 +22,50 @@ Resources:
         - ResourcePath: /*
           HttpMethod: "*"
           MetricsEnabled: false
-      Auth:
-        ApiKeyRequired: false
-        Authorizers:
-          RedeployAuthorizer:
-            FunctionArn: !GetAtt AuthorizerLambda.Arn
-            FunctionPayloadType: REQUEST
-            Identity:
-              Headers:
-                - Authorization
-              ReauthorizeEvery: 0
-        DefaultAuthorizer: RedeployAuthorizer
-      GatewayResponses:
-        ACCESS_DENIED:
-          StatusCode: 401
-          ResponseTemplates:
-            "application/json; charset=UTF-8": '{"statusCode":"401","message":"$context.authorizer.error.message"}'
+      Cors:
+        AllowHeaders: "'*'"
+        AllowMethods: "'POST, GET, OPTIONS'"
+        AllowOrigin: "'*'"
+      # Auth:
+      #   ApiKeyRequired: false
+      #   Authorizers:
+      #     RedeployAuthorizer:
+      #       FunctionArn: !GetAtt AuthorizerLambda.Arn
+      #       FunctionPayloadType: REQUEST
+      #       Identity:
+      #         Headers:
+      #           - Authorization
+      #         ReauthorizeEvery: 0
+      #   DefaultAuthorizer: RedeployAuthorizer
+      # GatewayResponses:
+      #   ACCESS_DENIED:
+      #     StatusCode: 401
+      #     ResponseTemplates:
+      #       "application/json; charset=UTF-8": '{"statusCode":"401","message":"$context.authorizer.error.message"}'
 
-  AuthorizerLambda:
-    Type: AWS::Serverless::Function
-    DependsOn: AuthorizerLambdaRole
-    Properties:
-      AutoPublishAlias: release
-      CodeUri: ../build/redeploy.sh-api.zip
-      Handler: src/authorizer/index.handler
-      Runtime: nodejs20.x
-      Role: !GetAtt AuthorizerLambdaRole.Arn
+  # AuthorizerLambda:
+  #   Type: AWS::Serverless::Function
+  #   DependsOn: AuthorizerLambdaRole
+  #   Properties:
+  #     AutoPublishAlias: release
+  #     CodeUri: ../build/redeploy.sh-api.zip
+  #     Handler: src/authorizer/index.handler
+  #     Runtime: nodejs20.x
+  #     Role: !GetAtt AuthorizerLambdaRole.Arn
 
-  AuthorizerLambdaRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: AuthorizerLambdaRole
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+  # AuthorizerLambdaRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     RoleName: AuthorizerLambdaRole
+  #     AssumeRolePolicyDocument:
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service:
+  #               - lambda.amazonaws.com
+  #           Action: sts:AssumeRole
+  #     ManagedPolicyArns:
+  #       - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
 
   Lambda:
     Type: AWS::Serverless::Function
@@ -68,6 +76,10 @@ Resources:
       Handler: src/index.handler
       Runtime: nodejs20.x
       Role: !GetAtt LambdaRole.Arn
+      Timeout: 30
+      Environment:
+        Variables:
+          DATA_TABLE_NAME: !Ref DataTableName
       Events:
         GetType:
           Type: Api
@@ -75,9 +87,16 @@ Resources:
             RestApiId: !Ref Gateway
             Path: /types/{type}/{version}
             Method: get
+        PerformOperations:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Gateway
+            Path: /v1/data
+            Method: post
 
   LambdaRole:
     Type: AWS::IAM::Role
+    DependsOn: DataTable
     Properties:
       AssumeRolePolicyDocument:
         Statement:
@@ -89,35 +108,29 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonAPIGatewayInvokeFullAccess
         - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+      Policies:
+        - PolicyName: DynamoAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: 'dynamodb:*'
+                Resource: !GetAtt DataTable.Arn
 
   DataTable:
     Type: AWS::DynamoDB::Table
     Properties:
+      TableName: !Ref DataTableName
+      ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
       AttributeDefinitions:
-        - AttributeName: type
+        - AttributeName: rKey
           AttributeType: S
-        - AttributeName: version
-          AttributeType: S
-        - AttributeName: keyPropertyA
-          AttributeType: S
-        - AttributeName: keyPropertyB
-          AttributeType: S
-        - AttributeName: keyPropertyC
-          AttributeType: S
-        - AttributeName: data
-          AttributeType: S
-        - AttributeName: archived
+        - AttributeName: hKey
           AttributeType: S
       KeySchema:
-        - AttributeName: type
+        - AttributeName: hKey
           KeyType: HASH
-        - AttributeName: version
-          KeyType: HASH
-        - AttributeName: keyPropertyA
-          KeyType: HASH
-        - AttributeName: keyPropertyB
-          KeyType: HASH
-        - AttributeName: keyPropertyC
-          KeyType: HASH
-        - AttributeName: archived
-          KeyType: HASH
+        - AttributeName: rKey
+          KeyType: RANGE

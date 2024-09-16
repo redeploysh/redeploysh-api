@@ -3,7 +3,7 @@ const chai = require('chai'),
     { createSandbox } = require('sinon'),
     sinonChai = require('sinon-chai'),
     { Operation } = require('../../src/lib/operation'),
-    { OperationSorter } = require('../../src/lib/operation-sorter'),
+    OperationSorter = require('../../src/lib/operation-sorter'),
     { Graph } = require('graph-data-structure')
 
 chai.should()
@@ -17,7 +17,7 @@ describe('OperationsSorter', function() {
         it('should throw error on circular dependency', function() {
             const op1 =
                 new Operation({
-                    type: 'type:version',
+                    type: 'user:1.0.0',
                     op: 'read',
                     key: {
                         someProperty: '${someOtherProperty}'
@@ -28,7 +28,7 @@ describe('OperationsSorter', function() {
                 }, 'id1')
             const op2 =
                 new Operation({
-                    type: 'type:version',
+                    type: 'user:1.0.0',
                     op: 'read',
                     key: {
                         someProperty: '${someProperty}'
@@ -45,7 +45,7 @@ describe('OperationsSorter', function() {
         it('should throw error on nested circular dependency', function() {
             const op1 =
                 new Operation({
-                    type: 'type:version',
+                    type: 'user:1.0.0',
                     op: 'read',
                     key: {
                         someProperty: '${someOtherPropertyReference}'
@@ -56,7 +56,7 @@ describe('OperationsSorter', function() {
                 }, 'id1')
             const op2 =
                 new Operation({
-                    type: 'type:version',
+                    type: 'user:1.0.0',
                     op: 'read',
                     key: {
                         someThirdProperty: '${somePropertyReference}'
@@ -67,7 +67,7 @@ describe('OperationsSorter', function() {
                 }, 'id2')
             const op3 =
                 new Operation({
-                    type: 'type:version',
+                    type: 'user:1.0.0',
                     op: 'read',
                     key: {
                         someOtherProperty: '${someThirdPropertyReference}'
@@ -82,7 +82,7 @@ describe('OperationsSorter', function() {
 
         it('should sort into dependency order', function() {
             const op1 = new Operation({
-                type: 'type:version',
+                type: 'user:1.0.0',
                 op: 'read',
                 key: {
                     prop: 'value'
@@ -92,7 +92,7 @@ describe('OperationsSorter', function() {
                 }
             }, 'id1')
             const op2 = new Operation({
-                type: 'type:version',
+                type: 'user:1.0.0',
                 op: 'read',
                 key: {
                     prop: '${op1PropReference}'
@@ -102,7 +102,7 @@ describe('OperationsSorter', function() {
                 }
             }, 'id2')
             const op3 = new Operation({
-                type: 'type:version',
+                type: 'user:1.0.0',
                 op: 'create',
                 data: {
                     prop: '${op2PropReference}'
@@ -112,7 +112,7 @@ describe('OperationsSorter', function() {
                 }
             }, 'id3')
             const op4 = new Operation({
-                type: 'type:version',
+                type: 'user:1.0.0',
                 op: 'create',
                 data: {
                     prop: '${op2PropReference}',
@@ -120,7 +120,7 @@ describe('OperationsSorter', function() {
                 }
             }, 'id4')
             const op5 = new Operation({
-                type: 'type:version',
+                type: 'user:1.0.0',
                 op: 'archive',
                 key: {
                     prop: '${op3PropReference}',

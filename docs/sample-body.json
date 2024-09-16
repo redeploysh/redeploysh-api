@@ -1,0 +1,13 @@
+{
+    "operations": [
+        {
+            "op": "create",
+            "type": "user:1.0.0",
+            "data": {
+                "emailAddress": "some.user2@email.com",
+                "name": "Some User2",
+                "phone": "555-555-1212"
+            }
+        }
+    ]
+}

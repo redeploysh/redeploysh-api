@@ -1,5 +1,4 @@
 const handler = (event, context) => {
-    console.log(`in authorizer: ${JSON.stringify(event)}`)
     return {
         principalId: 'some-user',
         policyDocument: {
@@ -11,9 +10,6 @@ const handler = (event, context) => {
                     Resource: event.methodArn
                 }
             ]
-        },
-        context: {
-            var: 'value'
         }
     }
 }

@@ -2,7 +2,7 @@ const readOperations = [
     'read'
 ]
 const writeOperations = [
-    'create', 'update', 'archive'
+    'create', 'update' //, 'archive'
 ]
 
 class Operation {
@@ -13,7 +13,7 @@ class Operation {
         this.op = op
         this.key = key
         this.data = data
-        this.returnValues = operation['return']
+        this.returnValues = Object.assign({}, operation['return'])
         this.id = id
     }
 

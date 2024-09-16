@@ -1,5 +1,4 @@
 const migrateUserV2 = {
-    auth: 'j.w.t',
     operations: [
         {
             op: 'read',
@@ -44,7 +43,18 @@ const migrateUserV2 = {
                 location: '${userLocation}',
                 language: '${userLanguage}'
             }
-        },
+        }
+    ],
+    response: {
+        userId: '${userIdReference}',
+        phone: '${userPhone}',
+        location: '${userLocation}',
+        language: '${userLanguage}'
+    }
+}
+
+/*
+,
         {
             op: 'archive',
             type: 'user:1.0.0',
@@ -66,14 +76,9 @@ const migrateUserV2 = {
                 userId: '${userIdReference}'
             }
         }
-    ],
-    response: {
-        userId: '${userIdReference}',
-        phone: '${userPhone}',
-        location: '${userLocation}',
-        language: '${userLanguage}'
-    }
-}
+
+
+*/
 
 // some-guid-1: Retrieve user by email
 // some-guid-2: Retrieve user phone number using retrieved id

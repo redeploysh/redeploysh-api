@@ -7,21 +7,24 @@ class RedeployShError extends Error {
     }
 }
 
-class InvalidRequestError extends RedeployShError {
-    constructor(message) {
-        super('InvalidRequestError', 400, message)
+class ReadOperationProcessingError extends RedeployShError {
+    constructor(cause) {
+        super('ReadOperationProcessingError', 400, cause.message || cause.errorMessage || 'Read Error')
+        this.cause = cause
     }
 }
 
-class InternalServerError extends RedeployShError {
-    constructor(message) {
-        super('InternalServerError', 503, message)
+class WriteOperationProcessingError extends RedeployShError {
+    constructor(cause) {
+        super('WriteOperationProcessingError', 400, cause.message || cause.errorMessage || 'Write Error')
+        this.cause = cause
     }
 }
 
-class NotFoundError extends RedeployShError {
-    constructor(message) {
-        super('NotFoundError', 404, message)
+class InvalidOperationError extends RedeployShError {
+    constructor(message, cause) {
+        super('InvalidOperationProcessingError', 400, message)
+        this.cause = cause
     }
 }
 
@@ -31,4 +34,22 @@ class InvalidTypeError extends RedeployShError {
     }
 }
 
-module.exports = { InternalServerError, InvalidRequestError, NotFoundError, InvalidTypeError }
+class InvalidRequestError extends RedeployShError {
+    constructor(cause) {
+        super('InvalidRequestError', 400, cause.message || cause.errorMessage || 'Invalid Request Error')
+    }
+}
+
+class NotFoundError extends RedeployShError {
+    constructor() {
+        super('NotFoundError', 404, 'Not Found')
+    }
+}
+
+class InternalProcessingError extends RedeployShError {
+    constructor(cause) {
+        super('InternalOperationProcessingError', 503, cause.message || cause.errorMessage)
+    }
+}
+
+module.exports = { ReadOperationProcessingError, WriteOperationProcessingError, InvalidOperationError, InvalidTypeError, InvalidRequestError, NotFoundError, InternalProcessingError, RedeployShError }

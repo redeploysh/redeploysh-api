@@ -1,5 +1,5 @@
-const { GetCommand, BatchGetCommand, DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb'),
-    { TransactWriteItemsCommand } = require('@aws-sdk/client-dynamodb')
+const { GetCommand, TransactWriteCommand, DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb'),
+    { InternalProcessingError, InvalidOperationError } = require('../errors')
 
 class DynamoAdaptor {
     constructor({ typeRegistry, dynamoDBClient, dataTableName }) {
@@ -13,136 +13,66 @@ class DynamoAdaptor {
         return DynamoDBDocumentClient.from(dynamoDBClient)
     }
 
-    get(type, version, key) {
-        const typeMetadata = this.typeRegistry.getType(type, version)
-        const command = new GetCommand({
-            TableName: this.dataTableName,
-            Key: {
-                type: typeMetadata.type,
-                version: typeMetadata.version,
-                keyPropertyA: key[typeMetadata.keyPropertyA],
-                keyPropertyB: (typeMetadata.keyPropertyB) ? key[typeMetadata.keyPropertyB] : '',
-                keyPropertyC: (typeMetadata.keyPropertyC) ? key[typeMetadata.keyPropertyC] : '',
-                archived: 'false'
-            }
-        })
-        return this.dynamoDBDocumentClient.send(command)
-            .then(({ Item }) => JSON.parse(Item.data))
-    }
-
-    batchRead(items) {
-        const keys = items.map(({ type, version, key }) => {
+    async get({ type, version, key }) {
+        try {
             const typeMetadata = this.typeRegistry.getType(type, version)
-            return {
-                type,
-                version,
-                keyPropertyA: key[typeMetadata.keyPropertyA],
-                keyPropertyB: (typeMetadata.keyPropertyB) ? key[typeMetadata.keyPropertyB] : '',
-                keyPropertyC: (typeMetadata.keyPropertyC) ? key[typeMetadata.keyPropertyC] : '',
-                archived: 'false'
-            }
-        })
+            const command = new GetCommand({
+                TableName: this.dataTableName,
+                Key: {
+                    hKey: `${type}:${version}:${key[typeMetadata.keyPropertyA]}:archived=false`,
+                    rKey: `${(typeMetadata.keyPropertyB) ? key[typeMetadata.keyPropertyB] : ''}:${(typeMetadata.keyPropertyC) ? key[typeMetadata.keyPropertyC] : ''}`
+                },
 
-        const command = new BatchGetCommand({
-            RequestItems: {
-                [this.dataTableName]: {
-                    Keys: keys
-                }
-            }
-        })
-
-        return this.dynamoDBDocumentClient.send(command)
-            .then(({ Responses }) => {
-                const { Items } = Responses[this.dataTableName]
-                return Items.map(item => (JSON.parse(item.data)))
             })
+            const response = await this.dynamoDBDocumentClient.send(command)
+            return JSON.parse(response.Item.data)
+        } catch (err) {
+            throw new InternalProcessingError(err)
+        }
     }
 
-    batchWrite(items) {
-        /*
-            Item: {
-                op := 'create'|'update'|'archive'
-                type: <type id>
-                version: <type version>
-                data: <json record>
-            }
-        */
-        const transactItems = []
-        items.forEach((item) => {
-            const typeMetadata = this.typeRegistry.getType(item.type, item.version)
-            if (item.op === 'create') {
-                transactItems.push({
-                    Put: {
-                        TableName: this.dataTableName,
-                        Item: {
-                            type: item.type,
-                            version: item.version,
-                            keyPropertyA: item.data[typeMetadata.keyPropertyA],
-                            keyPropertyB: (typeMetadata.keyPropertyB) ? item.data[typeMetadata.keyPropertyB] : '',
-                            keyPropertyC: (typeMetadata.keyPropertyC) ? item.data[typeMetadata.keyPropertyC] : '',
-                            data: JSON.stringify(item.data),
-                            archived: 'false'
+    async batchWrite(items) {
+        const errors = []
+        const command = new TransactWriteCommand({
+            TransactItems: items.map(({ op, type, version, data }) => {
+                const typeMetadata = this.typeRegistry.getType(type, version)
+                if (op === 'create') {
+                    return {
+                        Put: {
+                            TableName: this.dataTableName,
+                            Item: {
+                                hKey: `${type}:${version}:${data[typeMetadata.keyPropertyA]}:archived=false`,
+                                rKey: `${(typeMetadata.keyPropertyB) ? data[typeMetadata.keyPropertyB] : ''}:${(typeMetadata.keyPropertyC) ? data[typeMetadata.keyPropertyC] : ''}`,
+                                data: JSON.stringify(data)
+                            }
                         }
                     }
-                })
-            } else if (item.op === 'update') {
-                transactItems.push({
-                    Update: {
-                        TableName: this.dataTableName,
-                        Key: {
-                            type: item.type,
-                            version: item.version,
-                            keyPropertyA: item.data[typeMetadata.keyPropertyA],
-                            keyPropertyB: (typeMetadata.keyPropertyB) ? item.data[typeMetadata.keyPropertyB] : '',
-                            keyPropertyC: (typeMetadata.keyPropertyC) ? item.data[typeMetadata.keyPropertyC] : '',
-                            archived: 'false'
-                        },
-                        UpdateExpression: `SET #keyPropertyA = :keyValueA, #keyPropertyB = :keyValueB, #keyPropertyC = :keyValueC, #data = :data`,
-                        ExpressionAttributeNames: {
-                            '#keyPropertyA': 'keyPropertyA',
-                            '#keyPropertyB': 'keyPropertyB',
-                            '#keyPropertyC': 'keyPropertyC',
-                            '#data': 'data'
-                        },
-                        ExpressionAttributeValues: {
-                            ':keyValueA': item.data[typeMetadata.keyPropertyA],
-                            ':keyValueB': (typeMetadata.keyPropertyB) ? item.data[typeMetadata.keyPropertyB] : '',
-                            ':keyValueC': (typeMetadata.keyPropertyC) ? item.data[typeMetadata.keyPropertyC] : '',
-                            ':data': JSON.stringify(item.data)
+                } else if (op === 'update') {
+                    return {
+                        Update: {
+                            TableName: this.dataTableName,
+                            Key: {
+                                hKey: `${type}:${version}:${data[typeMetadata.keyPropertyA]}:archived=false`,
+                                rKey: `${(typeMetadata.keyPropertyB) ? data[typeMetadata.keyPropertyB] : ''}:${(typeMetadata.keyPropertyC) ? data[typeMetadata.keyPropertyC] : ''}`
+                            },
+                            UpdateExpression: `SET #data = :data`,
+                            ExpressionAttributeNames: {
+                                '#data': 'data'
+                            },
+                            ExpressionAttributeValues: {
+                                ':data': JSON.stringify(data)
+                            }
                         }
                     }
-                })
-            } else if (item.op === 'archive') {
-                transactItems.push({
-                    Update: {
-                        TableName: this.dataTableName,
-                        Key: {
-                            type: item.type,
-                            version: item.version,
-                            keyPropertyA: item.data[typeMetadata.keyPropertyA],
-                            keyPropertyB: (typeMetadata.keyPropertyB) ? item.data[typeMetadata.keyPropertyB] : '',
-                            keyPropertyC: (typeMetadata.keyPropertyC) ? item.data[typeMetadata.keyPropertyC] : '',
-                            archived: 'false'
-                        },
-                        UpdateExpression: `SET #archived = :archived`,
-                        ExpressionAttributeNames: {
-                            '#archived': 'archived'
-                        },
-                        ExpressionAttributeValues: {
-                            ':archived': 'true'
-                        }
-                    }
-                })
-            } else {
-                throw new Error('Unsupported operation')
-            }
+                } else {
+                    errors.push(new InvalidOperationError(`'${op}' is not a valid operation`))
+                }
+            })
         })
-
-        const command = new TransactWriteItemsCommand({
-            TransactItems: transactItems
-        })
-
-        return this.dynamoDBDocumentClient.send(command)
+        if (errors.length > 0) {
+            throw errors[0]
+        }
+        return await this.dynamoDBDocumentClient.send(command)
     }
 }
 

@@ -4,25 +4,28 @@ class OperationSorter {
     }
 
     sortOperations(operations) {
-        const opsGraph = this.graph()
-
+        const graph = this.graph()
         operations.forEach((op) => {
-            op.getDependencies().forEach((dependencyName) => {
-                operations.forEach((otherOp) => {
-                    if (otherOp.returnValues && Object.keys(otherOp.returnValues).includes(dependencyName)) {
-                        opsGraph.addNode(op.id)
-                        opsGraph.addNode(otherOp.id)
-                        opsGraph.addEdge(op.id, otherOp.id)
-                    }
+            const dependencies = op.getDependencies()
+            if (dependencies && dependencies.length > 0) {
+                graph.addNode(op.id)
+                op.getDependencies().forEach((dependencyName) => {
+                    operations.forEach((otherOp) => {
+                        if (otherOp.returnValues && Object.keys(otherOp.returnValues).includes(dependencyName)) {
+                            graph.addNode(otherOp.id)
+                            graph.addEdge(op.id, otherOp.id)
+                        }
+                    })
                 })
-            })
+            }
         })
         try {
-            return opsGraph.depthFirstSearch(undefined, true, true).map(id => operations.filter(op => op.id === id)[0])
+            const independent = operations.filter(op => !graph.nodes().includes(op.id))
+            return graph.depthFirstSearch(undefined, true, true).map(id => operations.filter(op => op.id === id)[0]).concat(independent)
         } catch (err) {
             throw new Error('Circular dependency')
         }
     }
 }
 
-module.exports = { OperationSorter }
+module.exports = OperationSorter
