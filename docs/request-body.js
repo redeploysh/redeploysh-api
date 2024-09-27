@@ -1,4 +1,26 @@
 const foo = {
+    definitions: [
+        {
+            type: 'user',
+            version: '1.0.0',
+            keyProperties: {
+                keyPropertyA: 'email',
+                keyPropertyB: 'phone'
+            },
+            validations: [
+                {
+                    property: 'email',
+                    re: '/.+@.+\..+/'
+                },
+                {
+                    property: 'nested.prop.phone',
+                    validators: [
+                        '(propertyValue) => propertyValue === "555-555-1212"'
+                    ]
+                }
+            ]
+        }
+    ],
     operations: [
         {
             op: 'read',

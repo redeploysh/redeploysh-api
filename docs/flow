@@ -1,0 +1,25 @@
+1. Definitions
+    A. Validate type definitions
+    B. Write type definitions to DB
+2. Operations
+    A. Read operations
+        i. Sort read operations into dependent order
+        ii. Initialize the local store
+        iii. Perform read operations sequentially
+            a. Check for variable references in the key
+            b. Substitute variable references in the key from the store
+            c. Read the data from the database
+            d. Return values to the store
+        iv. Return the store
+    B. Write operations
+        i. Preprocess write operations
+            a. Check for variable references in the data
+            b. Substitute variable references in the data
+            c. Retrieve type information from database
+            d. Generate hash and range key values
+            [e. Run validation rules from the type registry]
+        ii. Create the batch command
+        iii. Submit the batch command
+3. Response
+    A. Substitute variable references in the response
+    B. Return the response

@@ -9,13 +9,13 @@ class TypeInfoHandler {
         if (!type || !version) {
             throw new InvalidRequestError(type || 'no type', version || 'no version')
         }
-        const typeMetadata = this.typeRegistry.getType(type, version)
+        const typeMetadata = await this.typeRegistry.getType(type, version)
         return {
             statusCode: 200,
             body: {
                 type,
                 version,
-                primaryKeyProperties: Object.values(typeMetadata)
+                primaryKeyProperties: Object.values(typeMetadata.keyProperties)
             }
         }
     }

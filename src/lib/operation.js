@@ -45,4 +45,4 @@ class Operation {
     }
 }
 
-module.exports = { Operation }
+module.exports = Operation

@@ -1,5 +1,6 @@
 const handlers = require('./handlers'),
-    { DynamoAdaptor, OperationProcessor, OperationSorter, TypeRegistry } = require('./lib'),
+    { OperationProcessor, OperationSorter, VariableSubstitutor } = require('./lib'),
+    { DynamoAdaptor, TypeRegistry } = require('./adaptors'),
     { ApiGatewayJsonParser, ApiGatewayPathParamsParser } = require('./parsers'),
     { Graph } = require('graph-data-structure'),
     { DynamoDBClient } = require('@aws-sdk/client-dynamodb')
@@ -23,10 +24,14 @@ module.exports = {
     operationProcessor: inj => new OperationProcessor({
         dynamoAdaptor: inj.resolve('dynamoAdaptor'),
         typeRegistry: inj.resolve('typeRegistry'),
-        operationSorter: inj.resolve('operationSorter')
+        operationSorter: inj.resolve('operationSorter'),
+        variableSubstitutor: inj.resolve('variableSubstitutor')
     }),
     operationSorter: inj => new OperationSorter({
         graph: Graph
     }),
-    typeRegistry: inj => new TypeRegistry()
+    typeRegistry: inj => new TypeRegistry({
+        dynamoAdaptor: inj => inj.resolve('dynamoAdaptor')
+    }),
+    variableSubstitutor: inj => new VariableSubstitutor()
 }

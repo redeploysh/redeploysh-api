@@ -1,7 +1,7 @@
 module.exports = {
-    DynamoAdaptor: require('./dynamo-adaptor'),
+    Definition: require('./definition'),
     Operation: require('./operation'),
     OperationProcessor: require('./operation-processor'),
     OperationSorter: require('./operation-sorter'),
-    TypeRegistry: require('./type-registry')
+    VariableSubstitutor: require('./variable-substitutor')
 }

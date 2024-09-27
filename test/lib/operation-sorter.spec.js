@@ -2,8 +2,7 @@ const chai = require('chai'),
     chaiAsPromised = require('chai-as-promised'),
     { createSandbox } = require('sinon'),
     sinonChai = require('sinon-chai'),
-    { Operation } = require('../../src/lib/operation'),
-    OperationSorter = require('../../src/lib/operation-sorter'),
+    { Operation, OperationSorter } = require('../../src/lib'),
     { Graph } = require('graph-data-structure')
 
 chai.should()

@@ -1,16 +1,29 @@
-const { Operation } = require('../lib/operation')
+const { Definition, Operation } = require('../lib')
 
 class BatchOperationsHandler {
-    constructor({ operationProcessor }) {
+    constructor({ operationProcessor, typeRegistry }) {
         this.operationProcessor = operationProcessor
+        this.typeRegistry = typeRegistry
     }
 
-    async handle(event) {
-        const { operations, response } = event.body
+    deserializeDefinitions(definitions) {
+        return definitions.map(def => new Definition(def))
+    }
+
+    deserializeOperations(operations) {
         let id = 0
+        return operations.map(op => new Operation(op, `${id++}`))
+    }
+
+    async handle({ body }) {
+        if (body.definitions) {
+            await this.typeRegistry.createTypes(this.deserializeDefinitions(body.definitions))
+        }
+        const operations = this.deserializeOperations(body.operations)
+        const store = await this.operationProcessor.process(operations)
         return {
             statusCode: 200,
-            body: await this.operationProcessor.process(operations.map(op => new Operation(op, `${id++}`)), response)
+            body: this.operationProcessor.buildResponse(body.response, store)
         }
     }
 }

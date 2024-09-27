@@ -1,9 +1,9 @@
 const chai = require('chai'),
     chaiAsPromised = require('chai-as-promised'),
-    DynamoAdaptor = require('../../src/lib/dynamo-adaptor'),
+    DynamoAdaptor = require('../../src/adaptors/dynamo-adaptor'),
     { GetCommand, DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb'),
     { TransactWriteItemsCommand, DynamoDBClient } = require('@aws-sdk/client-dynamodb'),
-    TypeRegistry = require('../../src/lib/type-registry'),
+    TypeRegistry = require('../../src/adaptors/type-registry'),
     { mockClient } = require('aws-sdk-client-mock'),
     { createSandbox } = require('sinon'),
     { InvalidOperationError, InternalProcessingError } = require('../../src/errors')
@@ -31,6 +31,34 @@ describe('DynamoAdaptor tests', function() {
     })
 
     describe('#get', function() {
+        it('should return undefined if not found', function() {
+            const dynamoDocClient = mockClient(DynamoDBDocumentClient)
+            dynamoDocClient.on(GetCommand, {
+                TableName: 'data-table',
+                Key: 'key'
+            }).resolves({ })
+
+            const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
+            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').resolves({
+                keyProperties: {
+                    keyPropertyA: 'some-propA'
+                }
+            })
+            dynamoAdaptor.dataTableName = 'data-table'
+            dynamoAdaptor.dynamoDBDocumentClient = dynamoDocClient
+            dynamoAdaptor.get.callThrough()
+            dynamoAdaptor.buildKey.withArgs('test-type', 'test-version', 'some-value').returns('key')
+
+            return dynamoAdaptor.get({
+                type: 'test-type',
+                version: 'test-version',
+                key: {
+                    'some-propA': 'some-value'
+                }
+            }).should.eventually.be.deep.eql(undefined)
+        })
+
         it('should call the dynamodb client with the get command for one key property', function() {
             const dynamoDocClient = mockClient(DynamoDBDocumentClient)
             dynamoDocClient.on(GetCommand, {
@@ -39,7 +67,8 @@ describe('DynamoAdaptor tests', function() {
                     hKey: 'test-type:test-version:some-value:archived=false',
                     rKey: ':'
                 }
-            }).resolves({
+            }
+            ).resolves({
                 Item: {
                     data: JSON.stringify({
                         'some-propA': 'some-value',
@@ -51,19 +80,18 @@ describe('DynamoAdaptor tests', function() {
 
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
             dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type-one-key', 'test-version').returns({
-                type: 'test-type',
-                version: 'test-version',
-                keyPropertyA: 'some-propA',
-                keyPropertyB: undefined,
-                keyPropertyC: undefined
+            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').resolves({
+                keyProperties: {
+                    keyPropertyA: 'some-propA'
+                }
             })
             dynamoAdaptor.dataTableName = 'data-table'
             dynamoAdaptor.dynamoDBDocumentClient = dynamoDocClient
             dynamoAdaptor.get.callThrough()
+            dynamoAdaptor.buildKey.callThrough()
 
             return dynamoAdaptor.get({
-                type: 'test-type-one-key',
+                type: 'test-type',
                 version: 'test-version',
                 key: {
                     'some-propA': 'some-value'
@@ -95,16 +123,16 @@ describe('DynamoAdaptor tests', function() {
 
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
             dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').returns({
-                type: 'test-type',
-                version: 'test-version',
-                keyPropertyA: 'some-propA',
-                keyPropertyB: 'some-propB',
-                keyPropertyC: undefined
+            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').resolves({
+                keyProperties: {
+                    keyPropertyA: 'some-propA',
+                    keyPropertyB: 'some-propB'
+                }
             })
             dynamoAdaptor.dataTableName = 'data-table'
             dynamoAdaptor.dynamoDBDocumentClient = dynamoDocClient
             dynamoAdaptor.get.callThrough()
+            dynamoAdaptor.buildKey.callThrough()
 
             return dynamoAdaptor.get({
                 type: 'test-type',
@@ -124,31 +152,25 @@ describe('DynamoAdaptor tests', function() {
             const dynamoDocClient = mockClient(DynamoDBDocumentClient)
             dynamoDocClient.on(GetCommand, {
                 TableName: 'data-table',
-                Key: {
-                    hKey: 'test-type:test-version:some-value:archived=false',
-                    rKey: 'some-other-valueB:some-other-valueC'
-                }
+                Key: 'key-values'
             }).resolves({
                 Item: {
-                    data: JSON.stringify({
-                        'some-propA': 'some-value',
-                        'some-propB': 'some-other-valueB',
-                        'some-propC': 'some-other-valueC'
-                    })
+                    data: '{}'
                 }
             })
 
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
             dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').returns({
-                type: 'test-type',
-                version: 'test-version',
-                keyPropertyA: 'some-propA',
-                keyPropertyB: 'some-propB',
-                keyPropertyC: 'some-propC'
+            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').resolves({
+                keyProperties: {
+                    keyPropertyA: 'some-propA',
+                    keyPropertyB: 'some-propB',
+                    keyPropertyC: 'some-propC'
+                }
             })
             dynamoAdaptor.dataTableName = 'data-table'
             dynamoAdaptor.dynamoDBDocumentClient = dynamoDocClient
+            dynamoAdaptor.buildKey.withArgs('test-type', 'test-version').returns('key-values')
             dynamoAdaptor.get.callThrough()
 
             return dynamoAdaptor.get({
@@ -159,11 +181,7 @@ describe('DynamoAdaptor tests', function() {
                     'some-propB': 'some-other-valueB',
                     'some-propC': 'some-other-valueC'
                 }
-            }).should.eventually.be.deep.eql({
-                'some-propA': 'some-value',
-                'some-propB': 'some-other-valueB',
-                'some-propC': 'some-other-valueC'
-            })
+            }).should.eventually.be.deep.eql({})
         })
 
         it('should throw an error if dynamo errors', async function() {
@@ -179,8 +197,6 @@ describe('DynamoAdaptor tests', function() {
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
             dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
             dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').returns({
-                type: 'test-type',
-                version: 'test-version',
                 keyPropertyA: 'some-propA',
                 keyPropertyB: 'some-propB',
                 keyPropertyC: 'some-propC'
@@ -188,6 +204,8 @@ describe('DynamoAdaptor tests', function() {
             dynamoAdaptor.dataTableName = 'data-table'
             dynamoAdaptor.dynamoDBDocumentClient = dynamoDocClient
             dynamoAdaptor.get.callThrough()
+            dynamoAdaptor.buildKey.callThrough()
+
             try {
                 await dynamoAdaptor.get({
                     type: 'user',
@@ -207,13 +225,7 @@ describe('DynamoAdaptor tests', function() {
         it('should throw if unsupported operation in batch', async function() {
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
             dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type-one-key', 'test-version').returns({
-                type: 'test-type',
-                version: 'test-version',
-                keyPropertyA: 'some-propA',
-                keyPropertyB: undefined,
-                keyPropertyC: undefined
-            })
+            dynamoAdaptor.typeRegistry.getType.resolves({ keyProperties: {} })
             dynamoAdaptor.batchWrite.callThrough()
 
             try {
@@ -236,8 +248,8 @@ describe('DynamoAdaptor tests', function() {
                         "Put": {
                             "TableName": "data-table",
                             "Item": {
-                                "hKey": "test-type:test-version:test-valueA:archived=false",
-                                "rKey": "test-valueB:",
+                                "hKey": "hKey",
+                                "rKey": "rKey",
                                 "data": "{\"some-propA\":\"test-valueA\",\"some-propB\":\"test-valueB\"}"
                             }
                         }
@@ -246,8 +258,8 @@ describe('DynamoAdaptor tests', function() {
                         "Put": {
                             "TableName": "data-table",
                             "Item": {
-                                "hKey": "test-type-one-key:test-version:test-valueA:archived=false",
-                                "rKey": ":",
+                                "hKey": "hKey",
+                                "rKey": "rKey",
                                 "data": "{\"some-propA\":\"test-valueA\"}"
                             }
                         }
@@ -256,8 +268,8 @@ describe('DynamoAdaptor tests', function() {
                         "Put": {
                             "TableName": "data-table",
                             "Item": {
-                                "hKey": "test-type-three-keys:test-version:test-valueA:archived=false",
-                                "rKey": "test-valueB:test-valueC",
+                                "hKey": "hKey",
+                                "rKey": "rKey",
                                 "data": "{\"some-propA\":\"test-valueA\",\"some-propB\":\"test-valueB\",\"some-propC\":\"test-valueC\"}"
                             }
                         }
@@ -266,66 +278,62 @@ describe('DynamoAdaptor tests', function() {
             }).resolves({})
 
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            dynamoAdaptor.buildKey.returns({
+                hKey: 'hKey',
+                rKey: 'rKey'
+            })
             dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type-one-key', 'test-version').returns({
-                type: 'test-type',
-                version: 'test-version',
-                keyPropertyA: 'some-propA',
-                keyPropertyB: undefined,
-                keyPropertyC: undefined
+            dynamoAdaptor.typeRegistry.getType.withArgs('test-type-one-key', 'test-version').resolves({
+                keyProperties: {
+                    keyPropertyA: 'some-propA'
+                }
             })
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').returns({
-                type: 'test-type',
-                version: 'test-version',
-                keyPropertyA: 'some-propA',
-                keyPropertyB: 'some-propB',
-                keyPropertyC: undefined
+            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').resolves({
+                keyProperties: {
+                    keyPropertyA: 'some-propA',
+                    keyPropertyB: 'some-propB'
+                }
             })
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type-three-keys', 'test-version').returns({
-                type: 'test-type',
-                version: 'test-version',
-                keyPropertyA: 'some-propA',
-                keyPropertyB: 'some-propB',
-                keyPropertyC: 'some-propC'
+            dynamoAdaptor.typeRegistry.getType.withArgs('test-type-three-keys', 'test-version').resolves({
+                keyProperties: {
+                    keyPropertyA: 'some-propA',
+                    keyPropertyB: 'some-propB',
+                    keyPropertyC: 'some-propC'
+                }
             })
             dynamoAdaptor.dataTableName = 'data-table'
             dynamoAdaptor.dynamoDBDocumentClient = dynamoDocClient
             dynamoAdaptor.batchWrite.callThrough()
 
-            try {
-                await dynamoAdaptor.batchWrite([
-                    {
-                        op: 'create',
-                        type: 'test-type',
-                        version: 'test-version',
-                        data: {
-                            'some-propA': 'test-valueA',
-                            'some-propB': 'test-valueB'
-                        }
-                    },
-                    {
-                        op: 'create',
-                        type: 'test-type-one-key',
-                        version: 'test-version',
-                        data: {
-                            'some-propA': 'test-valueA'
-                        }
-                    },
-                    {
-                        op: 'create',
-                        type: 'test-type-three-keys',
-                        version: 'test-version',
-                        data: {
-                            'some-propA': 'test-valueA',
-                            'some-propB': 'test-valueB',
-                            'some-propC': 'test-valueC'
-                        }
+            return dynamoAdaptor.batchWrite([
+                {
+                    op: 'create',
+                    type: 'test-type',
+                    version: 'test-version',
+                    data: {
+                        'some-propA': 'test-valueA',
+                        'some-propB': 'test-valueB'
                     }
-                ])
-                return chai.expect(true).to.be.true
-            } catch (err) {
-                chai.expect.fail(`should not have thrown ${err}`)
-            }
+                },
+                {
+                    op: 'create',
+                    type: 'test-type-one-key',
+                    version: 'test-version',
+                    data: {
+                        'some-propA': 'test-valueA'
+                    }
+                },
+                {
+                    op: 'create',
+                    type: 'test-type-three-keys',
+                    version: 'test-version',
+                    data: {
+                        'some-propA': 'test-valueA',
+                        'some-propB': 'test-valueB',
+                        'some-propC': 'test-valueC'
+                    }
+                }
+            ]).should.eventually.not.be.rejected
         })
 
         it('should do an update if an update op is in the items', async function() {
@@ -336,47 +344,15 @@ describe('DynamoAdaptor tests', function() {
                         "Update": {
                             "TableName": "data-table",
                             "Key": {
-                                "hKey": "test-type-one-key:test-version:test-valueA:archived=false",
-                                "rKey": ":"
+                                hKey: 'hKey',
+                                rKey: 'rKey'
                             },
-                            "UpdateExpression": 'SET #data = :data',
-                            "ExpressionAttributeNames": {
+                            UpdateExpression: `SET #data = :data`,
+                            ExpressionAttributeNames: {
                                 '#data': 'data'
                             },
-                            "ExpressionAttributeValues": {
-                                ":data": "{\"some-propA\":\"test-valueA\"}"
-                            }
-                        }
-                    },
-                    {
-                        "Update": {
-                            "TableName": "data-table",
-                            "Key": {
-                                "hKey": "test-type:test-version:test-valueA:archived=false",
-                                "rKey": "test-valueB:"
-                            },
-                            "UpdateExpression": 'SET #data = :data',
-                            "ExpressionAttributeNames": {
-                                '#data': 'data'
-                            },
-                            "ExpressionAttributeValues": {
-                                ":data": "{\"some-propA\":\"test-valueA\",\"some-propB\":\"test-valueB\"}"
-                            }
-                        }
-                    },
-                    {
-                        "Update": {
-                            "TableName": "data-table",
-                            "Key": {
-                                "hKey": "test-type-three-keys:test-version:test-valueA:archived=false",
-                                "rKey": "test-valueB:test-valueC"
-                            },
-                            "UpdateExpression": 'SET #data = :data',
-                            "ExpressionAttributeNames": {
-                                '#data': 'data'
-                            },
-                            "ExpressionAttributeValues": {
-                                ":data": "{\"some-propA\":\"test-valueA\",\"some-propB\":\"test-valueB\",\"some-propC\":\"test-valueC\"}"
+                            ExpressionAttributeValues: {
+                                ':data': '{}'
                             }
                         }
                     }
@@ -384,67 +360,59 @@ describe('DynamoAdaptor tests', function() {
             }).resolves({})
 
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            dynamoAdaptor.buildKey.returns({
+                hKey: 'hKey',
+                rKey: 'rKey'
+            })
             dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type-one-key', 'test-version').returns({
-                type: 'test-type',
-                version: 'test-version',
-                keyPropertyA: 'some-propA',
-                keyPropertyB: undefined,
-                keyPropertyC: undefined
-            })
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').returns({
-                type: 'test-type',
-                version: 'test-version',
-                keyPropertyA: 'some-propA',
-                keyPropertyB: 'some-propB',
-                keyPropertyC: undefined
-            })
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type-three-keys', 'test-version').returns({
-                type: 'test-type',
-                version: 'test-version',
-                keyPropertyA: 'some-propA',
-                keyPropertyB: 'some-propB',
-                keyPropertyC: 'some-propC'
+            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').resolves({
+                keyProperties: {
+                    keyPropertyA: 'some-propA'
+                }
             })
             dynamoAdaptor.dataTableName = 'data-table'
             dynamoAdaptor.dynamoDBDocumentClient = dynamoDocClient
             dynamoAdaptor.batchWrite.callThrough()
 
-            try {
-                await dynamoAdaptor.batchWrite([
-                    {
-                        op: 'update',
-                        type: 'test-type-one-key',
-                        version: 'test-version',
-                        data: {
-                            'some-propA': 'test-valueA'
-                        }
-                    },
-                    {
-                        op: 'update',
-                        type: 'test-type',
-                        version: 'test-version',
-                        data: {
-                            'some-propA': 'test-valueA',
-                            'some-propB': 'test-valueB'
-                        }
-                    },
-                    {
-                        op: 'update',
-                        type: 'test-type-three-keys',
-                        version: 'test-version',
-                        data: {
-                            'some-propA': 'test-valueA',
-                            'some-propB': 'test-valueB',
-                            'some-propC': 'test-valueC'
-                        }
+            return dynamoAdaptor.batchWrite([
+                {
+                    op: 'update',
+                    type: 'test-type',
+                    version: 'test-version',
+                    data: {
+                        'some-propA': 'test-valueA'
                     }
-                ])
-                chai.expect(true).to.be.true
-            } catch (err) {
-                chai.expect.fail(`should not have thrown ${err}`)
-            }
+                }
+            ]).should.eventually.not.be.rejected
+        })
+    })
+
+    describe('#buildKey', function() {
+        it('should build a one-value key', function() {
+            const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            dynamoAdaptor.buildKey.callThrough()
+            dynamoAdaptor.buildKey('type', 'version', 'value').should.be.eql({
+                hKey: 'type:version:value:archived=false',
+                rKey: ':'
+            })
         })
 
+        it('should build a two-value key', function() {
+            const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            dynamoAdaptor.buildKey.callThrough()
+            dynamoAdaptor.buildKey('type', 'version', 'value', 'value').should.be.eql({
+                hKey: 'type:version:value:archived=false',
+                rKey: 'value:'
+            })
+        })
+
+        it('should build a three-value key', function() {
+            const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            dynamoAdaptor.buildKey.callThrough()
+            dynamoAdaptor.buildKey('type', 'version', 'value', 'value', 'value').should.be.eql({
+                hKey: 'type:version:value:archived=false',
+                rKey: 'value:value'
+            })
+        })
     })
 })

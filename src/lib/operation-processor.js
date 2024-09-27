@@ -1,11 +1,69 @@
 const { ReadOperationProcessingError, InvalidOperationError, WriteOperationProcessingError, RedeployShError } = require('../errors')
 
 class OperationProcessor {
-    constructor({ dynamoAdaptor, typeRegistry, operationSorter, logger }) {
+    constructor({ dynamoAdaptor, typeRegistry, operationSorter, variableSubstitutor }) {
         this.dynamoAdaptor = dynamoAdaptor
         this.typeRegistry = typeRegistry
         this.operationSorter = operationSorter
-        this.logger = logger
+        this.variableSubstitutor = variableSubstitutor
+    }
+
+    async process(operations) {
+        const readOperations = this.operationSorter.sortOperations(operations.filter(op => op.isReadOperation()))
+        const writeOperations = operations.filter(op => !op.isReadOperation())
+        const store = await this.processReads(readOperations)
+        await this.processWrites(writeOperations)
+        return store
+    }
+
+    async processReads(operations) {
+        let store = {}
+        for (let i = 0; i < operations.length; i++) {
+            store = await this.processRead(operations[i], store)
+        }
+        return store
+    }
+
+    async processRead(originalOperation, store) {
+        try {
+            const key = this.variableSubstitutor.substituteInObject(originalOperation.key, store)
+            const operation = Object.assign({}, originalOperation)
+            operation.key = key
+            const item = await this.dynamoAdaptor.get(operation)
+            let newStore = Object.assign({}, store)
+            for (let returnVariableIdentifier of Object.keys(operation.returnValues)) {
+                if (this.getProperty(item, operation.returnValues[returnVariableIdentifier])) {
+                    newStore[returnVariableIdentifier] = this.getProperty(item, operation.returnValues[returnVariableIdentifier])
+                } else {
+                    throw new ReadOperationProcessingError(`${returnVariableIdentifier} set to value of ${operation.returnValues[returnVariableIdentifier]} but that property is not found in the source data: ${JSON.stringify(item)}`)
+                }
+            }
+            return newStore
+        } catch (err) {
+            if (err instanceof RedeployShError) {
+                throw err
+            }
+            throw new ReadOperationProcessingError(err)
+        }
+    }
+
+    async processWrites(originalOperations, store) {
+        const operations = originalOperations
+            .map(operation => ({
+                op: operation.op,
+                type: operation.type,
+                version: operation.version,
+                data: this.variableSubstitutor.substituteInObject(operation.data, store)
+            }))
+        try {
+            return await this.dynamoAdaptor.batchWrite(operations)
+        } catch (err) {
+            throw new WriteOperationProcessingError(err)
+        }
+    }
+
+    buildResponse(response, store) {
+        return (response) ? this.variableSubstitutor.substituteInObject(response, store) : {}
     }
 
     getProperty(data, path) {
@@ -17,120 +75,6 @@ class OperationProcessor {
                 return data[path]
             }
             throw new InvalidOperationError(`missing data property ${path}`)
-        }
-    }
-
-    containsSubstitution(stringValue) {
-        const re = /\$\{[-\w]+\}/
-        return (stringValue.match(re) != null)
-    }
-
-    substitute(stringValue, data) {
-        const substitutions = {}
-        Object.keys(data).forEach((variableReference) => {
-            substitutions[variableReference] = data[variableReference]
-        })
-        const re = new RegExp(`\\$\\{[-\\w]+\\}`, "g")
-        return stringValue.replace(re, (matched) => {
-            const key = matched.match(/\$\{(.+)\}/)[1]
-            if (!key || !substitutions[key]) {
-                throw new InvalidOperationError(`Undefined variable in substitution: ${key}`)
-            }
-            return substitutions[key]
-        })
-    }
-
-    buildOperationWithValues(operation, variables) {
-        const op = Object.assign({}, operation)
-        Object.keys(op.key)
-            .filter(propertyName => this.containsSubstitution(op.key[propertyName]))
-            .forEach(propertyName => op.key[propertyName] = this.substitute(op.key[propertyName], variables))
-        return op
-    }
-
-    async read(operation, variables) {
-        try {
-            const op = this.buildOperationWithValues(operation, variables)
-            const item = await this.dynamoAdaptor.get(op)
-            let data = {}
-            for (let returnedValueIdentifier of Object.keys(op.returnValues)) {
-                if (this.getProperty(item, op.returnValues[returnedValueIdentifier])) {
-                    data[returnedValueIdentifier] = this.getProperty(item, op.returnValues[returnedValueIdentifier])
-                } else {
-                    throw new ReadOperationProcessingError(`${returnedValueIdentifier} set to value of ${op.returnValues[returnedValueIdentifier]} but that property is not found in the source data: ${JSON.stringify(item)}`)
-                }
-            }
-            return data
-        } catch (err) {
-            if (err instanceof RedeployShError) {
-                throw err
-            }
-            throw new ReadOperationProcessingError(err)
-        }
-    }
-
-    async processReadOperation(operation, data) {
-        const result = await this.read(operation, data)
-        return Object.assign({}, data, result)
-    }
-
-    async processReadOperations(operations) {
-        let data = {}
-        for (let i = 0; i < operations.length; i++) {
-            data = await this.processReadOperation(operations[i], data)
-        }
-        return data
-    }
-
-    mapWriteOperations(operations, data) {
-        return operations.filter(op => !op.isReadOperation())
-            .map((op) => {
-                Object.keys(op.data)
-                    .filter(propertyName => this.containsSubstitution(op.data[propertyName]))
-                    .forEach(propertyName => op.data[propertyName] = this.substitute(op.data[propertyName], data))
-                return {
-                    op: op.op,
-                    type: op.type,
-                    version: op.version,
-                    data: op.data
-                }
-            })
-    }
-
-    async process(operations, response) {
-        const data = await this.processReadOperations(this.operationSorter.sortOperations(operations.filter(op => op.isReadOperation())))
-        const writeItems = this.mapWriteOperations(operations, data)
-        if (writeItems.length === 0) {
-            return this.processResponse(response, data)
-        } else {
-            try {
-                await this.dynamoAdaptor.batchWrite(writeItems)
-                return this.processResponse(response, data)
-            } catch (err) {
-                throw new WriteOperationProcessingError(err)
-            }
-        }
-    }
-
-    processResponse(response, data) {
-        if (!response) {
-            return {}
-        } else if (response.constructor && response.constructor === Object) {
-            const final = {}
-            Object.keys(response).forEach((key) => {
-                final[key] = this.processResponse(response[key], data)
-            })
-            return final
-        } else if (Array.isArray(response)) {
-            return response.map(responseElement => this.processResponse(responseElement, data))
-        } else if (typeof response === 'string') {
-            if (this.containsSubstitution(response)) {
-                return this.substitute(response, data)
-            } else {
-                return response
-            }
-        } else {
-            return response
         }
     }
 }
