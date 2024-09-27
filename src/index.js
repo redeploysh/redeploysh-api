@@ -1,10 +1,12 @@
 const { Injector } = require('./framework/injector'),
+    Router = require('./framework/router'),
+    Logger = require('./logger'),
     dependencies = require('./dependencies')
 
 module.exports = {
-    handle: (event, context) => {
-        const i = new Injector(dependencies)
-        const router = i.resolve('router')
-        return router.dispatch(event, context)
+    handler: async (event, context) => {
+        const injector = new Injector(dependencies)
+        const router = new Router({ dependencies, injector, logger: new Logger() })
+        return await router.dispatch(event, context)
     }
 }

@@ -1,25 +1,23 @@
-const BaseHandler = require('./base-handler'),
-    { InvalidRequestError, InternalServerError, NotFoundError } = require('../errors')
+const { InvalidRequestError } = require('../errors')
 
-class TypeInfoHandler extends BaseHandler {
+class TypeInfoHandler {
     constructor({ typeRegistry }) {
-        super()
         this.typeRegistry = typeRegistry
     }
 
-    handle({ pathParameters: { type, version } }) {
+    async handle({ pathParameters: { type, version } }) {
         if (!type || !version) {
-            return this.buildErrorResponse(new InvalidRequestError('type and version required'))
+            throw new InvalidRequestError(type || 'no type', version || 'no version')
         }
-        const typeMetadata = this.typeRegistry.getType(type, version)
-        return this.buildResponse({
+        const typeMetadata = await this.typeRegistry.getType(type, version)
+        return {
             statusCode: 200,
-            body: JSON.stringify({
+            body: {
                 type,
                 version,
-                primaryKeyProperties: Object.values(typeMetadata)
-            })
-        })
+                primaryKeyProperties: Object.values(typeMetadata.keyProperties)
+            }
+        }
     }
 }
 

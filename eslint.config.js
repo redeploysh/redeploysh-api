@@ -8,7 +8,7 @@ module.exports = {
         ecmaVersion: 2020,
         sourceType: 'module',
         parserOptions: {
-            ecmaVersion: 6
+            ecmaVersion: 8
         }
     },
     rules: {
@@ -39,6 +39,7 @@ module.exports = {
         '@stylistic/js/no-mixed-spaces-and-tabs': ["error"],
         '@stylistic/js/no-tabs': ["error", { 'allowIndentationTabs': true }],
         '@stylistic/js/space-infix-ops': ["error"],
-        '@stylistic/js/space-unary-ops': ["error"]
+        '@stylistic/js/space-unary-ops': ["error"],
+        '@stylistic/js/space-in-parens': ["error", "never"]
     }
 }

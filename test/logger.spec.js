@@ -1,7 +1,7 @@
 const chai = require('chai'),
     chaiAsPromised = require('chai-as-promised'),
     { createSandbox } = require('sinon'),
-    Logger = require('../../src/lib/logger')
+    Logger = require('../src/logger')
 
 chai.should()
 chai.use(chaiAsPromised)

@@ -26,7 +26,7 @@
         "chai": "^4.3.7",
         "chai-as-promised": "^7.1.1",
         "sinon-chai": "^3.7.0",
-        "@stylistic/eslint-plugin-js": "^2.3.0",
+        "@stylistic/eslint-plugin-js": "^2.8.0",
         "@aws-sdk/lib-dynamodb": "^3.632.0",
         "@aws-sdk/client-dynamodb": "^3.632.0",
         "aws-sdk-client-mock": "^4.0.1",

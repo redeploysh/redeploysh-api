@@ -1,9 +1,4 @@
 class ApiGatewayPathParamsParser {
-
-    constructor({ logger }) {
-        this.logger = logger
-    }
-
     parse(event) {
         const {
             headers,
@@ -17,13 +12,13 @@ class ApiGatewayPathParamsParser {
             }
         } = event
 
-        return Promise.resolve({
+        return {
             headers,
             pathParameters,
             authorizer,
             sourceIp,
             requestId
-        })
+        }
     }
 }
 

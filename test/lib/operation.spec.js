@@ -1,6 +1,6 @@
 const chai = require('chai'),
     chaiAsPromised = require('chai-as-promised'),
-    { Operation } = require('../../src/lib/operation')
+    { Operation } = require('../../src/lib')
 
 chai.should()
 chai.use(chaiAsPromised)

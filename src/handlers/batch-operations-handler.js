@@ -1,23 +1,30 @@
-const BaseHandler = require('./base-handler'),
-    { Operation } = require('../lib/operation')
+const { Definition, Operation } = require('../lib')
 
-class BatchOperationsHandler extends BaseHandler {
-    constructor({ dynamoAdaptor, operationProcessor }) {
-        super()
-        this.dynamoAdaptor = dynamoAdaptor
+class BatchOperationsHandler {
+    constructor({ operationProcessor, typeRegistry }) {
         this.operationProcessor = operationProcessor
+        this.typeRegistry = typeRegistry
     }
 
-    handle(event) {
-        const { operations } = event.body
-        return this.operationProcessor.process(operations.map(op => new Operation(op)))
-            .then(() => this.buildResponse({ statusCode: 200, body: {} }))
-            .catch((err) => {
-                this.logger.error(`processing error: ${JSON.stringify(err)}`)
-                return this.buildErrorResponse({
-                    message: `processing error; transaction rejected`
-                })
-            })
+    deserializeDefinitions(definitions) {
+        return definitions.map(def => new Definition(def))
+    }
+
+    deserializeOperations(operations) {
+        let id = 0
+        return operations.map(op => new Operation(op, `${id++}`))
+    }
+
+    async handle({ body }) {
+        if (body.definitions) {
+            await this.typeRegistry.createTypes(this.deserializeDefinitions(body.definitions))
+        }
+        const operations = this.deserializeOperations(body.operations)
+        const store = await this.operationProcessor.process(operations)
+        return {
+            statusCode: 200,
+            body: this.operationProcessor.buildResponse(body.response, store)
+        }
     }
 }
 

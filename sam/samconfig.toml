@@ -8,3 +8,4 @@ s3_prefix = "redeploy-sh-api"
 region = "us-east-1"
 capabilities = "CAPABILITY_NAMED_IAM"
 image_repositories = []
+parameter_overrides = "DataTableName=\"redeploy-dev-data-table\""

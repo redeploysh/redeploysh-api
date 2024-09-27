@@ -1,15 +1,7 @@
 const { InvalidRequestError } = require('../errors')
 
 class ApiGatewayJsonParser {
-
-    constructor({ logger }) {
-        this.logger = logger
-    }
-
-    parse(event, context) {
-        this.logger.log(`event: ${JSON.stringify(event)}`)
-        this.logger.log(`lambda context: ${JSON.stringify(context)}`)
-
+    parse(event) {
         const {
             headers,
             queryStringParameters,
@@ -25,18 +17,17 @@ class ApiGatewayJsonParser {
         } = event
 
         try {
-            const requestBody = JSON.parse(body)
-            return Promise.resolve({
-                body: requestBody,
+            return {
+                body: JSON.parse(body),
                 headers,
                 pathParameters,
                 queryStringParameters,
                 authorizer,
                 sourceIp,
                 requestId
-            })
+            }
         } catch (err) {
-            return Promise.reject(new InvalidRequestError('invalid json'))
+            throw new InvalidRequestError(err)
         }
     }
 }

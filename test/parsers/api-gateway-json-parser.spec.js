@@ -4,7 +4,7 @@ const chai = require('chai'),
     sinonChai = require('sinon-chai'),
     ApiGatewayJsonParser = require('../../src/parsers/api-gateway-json-parser'),
     { InvalidRequestError } = require('../../src/errors'),
-    Logger = require('../../src/lib/logger')
+    Logger = require('../../src/logger')
 
 chai.should()
 chai.use(chaiAsPromised)
@@ -40,7 +40,7 @@ describe('ApiGatewayJsonParser', function() {
             const context = 'some-lambda-context'
 
             const parser = new ApiGatewayJsonParser({ logger: sinon.createStubInstance(Logger) })
-            parser.parse(event, context).should.eventually.be.eql({
+            return parser.parse(event, context).should.be.eql({
                 body: {
                     key: 'value'
                 },
@@ -74,7 +74,12 @@ describe('ApiGatewayJsonParser', function() {
             const context = 'some-lambda-context'
 
             const parser = new ApiGatewayJsonParser({ logger: sinon.createStubInstance(Logger) })
-            parser.parse(event, context).should.eventually.be.rejectedWith(InvalidRequestError)
+            try {
+                parser.parse(event, context)
+                return chai.expect.fail(`should have thrown`)
+            } catch (err) {
+                return err.should.be.an.instanceOf(InvalidRequestError)
+            }
         })
     })
 })
