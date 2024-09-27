@@ -249,7 +249,6 @@ describe('DynamoAdaptor tests', function() {
                 ])
                 return chai.expect.fail(`should have thrown`)
             } catch (err) {
-                console.error(err)
                 return err.should.be.instanceOf(InvalidOperationError)
             }
         })
@@ -288,7 +287,6 @@ describe('DynamoAdaptor tests', function() {
                 ])
                 return chai.expect.fail(`should have thrown`)
             } catch (err) {
-                console.error(err)
                 return err.should.be.instanceOf(InvalidRequestError)
             }
         })
@@ -327,7 +325,6 @@ describe('DynamoAdaptor tests', function() {
                 ])
                 return chai.expect.fail(`should have thrown`)
             } catch (err) {
-                console.error(err)
                 return err.should.be.instanceOf(InvalidRequestError)
             }
         })
@@ -366,7 +363,6 @@ describe('DynamoAdaptor tests', function() {
                 ])
                 return chai.expect.fail(`should have thrown`)
             } catch (err) {
-                console.error(err)
                 return err.should.be.instanceOf(InvalidRequestError)
             }
         })
@@ -403,7 +399,6 @@ describe('DynamoAdaptor tests', function() {
                 ])
                 return chai.expect.fail(`should have thrown`)
             } catch (err) {
-                console.error(err)
                 return err.should.be.instanceOf(InvalidRequestError)
             }
         })
@@ -442,7 +437,6 @@ describe('DynamoAdaptor tests', function() {
                 ])
                 return chai.expect.fail(`should have thrown`)
             } catch (err) {
-                console.error(err)
                 return err.should.be.instanceOf(InternalProcessingError)
             }
         })
