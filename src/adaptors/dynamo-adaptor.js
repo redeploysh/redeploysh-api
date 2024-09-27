@@ -86,15 +86,14 @@ class DynamoAdaptor {
         try {
             return await this.dynamoDBClient.send(command)
         } catch (err) {
-            this.logger.error(`dynamodb error`, err)
+            this.logger.error(`dynamodb error ${JSON.stringify(err)} ${err.stack}`)
             if (err instanceof TransactionCanceledException) {
-                const message = (err.CancellationReasons & err.CancellationReasons.length > 0) ? err.CancellationReasons[0].Code || 'unknown' : err.name
+                const message = (err.CancellationReasons && err.CancellationReasons.length > 0) ? err.CancellationReasons[0].Code || 'unknown' : err.name
                 throw new InvalidRequestError(message, err)
             } else {
                 throw new InternalProcessingError(err)
             }
         }
-
     }
 }
 

@@ -2,11 +2,11 @@ const chai = require('chai'),
     chaiAsPromised = require('chai-as-promised'),
     DynamoAdaptor = require('../../src/adaptors/dynamo-adaptor'),
     { GetCommand, DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb'),
-    { TransactWriteItemsCommand, DynamoDBClient } = require('@aws-sdk/client-dynamodb'),
+    { TransactWriteItemsCommand, TransactionCanceledException, DynamoDBClient } = require('@aws-sdk/client-dynamodb'),
     TypeRegistry = require('../../src/adaptors/type-registry'),
     { mockClient } = require('aws-sdk-client-mock'),
     { createSandbox } = require('sinon'),
-    { InvalidOperationError, InternalProcessingError } = require('../../src/errors')
+    { InvalidOperationError, InternalProcessingError, InvalidRequestError } = require('../../src/errors')
 
 chai.should()
 chai.use(chaiAsPromised)
@@ -225,20 +225,228 @@ describe('DynamoAdaptor tests', function() {
         it('should throw if unsupported operation in batch', async function() {
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
             dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.resolves({ keyProperties: {} })
+            dynamoAdaptor.typeRegistry.getType.resolves({
+                keyProperties: {
+                    keyPropertyA: 'propA',
+                    keyPropertyB: 'propB',
+                    keyPropertyC: 'propC'
+                }
+            })
             dynamoAdaptor.batchWrite.callThrough()
+            dynamoAdaptor.buildKey.callThrough()
+            dynamoAdaptor.logger = console
 
             try {
                 await dynamoAdaptor.batchWrite([
                     {
-                        op: 'some-other'
+                        op: 'some-other',
+                        data: {
+                            propA: 'val1',
+                            propB: 'val2',
+                            propC: 'val3'
+                        }
                     }
                 ])
                 return chai.expect.fail(`should have thrown`)
             } catch (err) {
+                console.error(err)
                 return err.should.be.instanceOf(InvalidOperationError)
             }
         })
+
+        it('should throw if transaction cancelled', async function() {
+            const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
+            dynamoAdaptor.typeRegistry.getType.resolves({
+                keyProperties: {
+                    keyPropertyA: 'propA',
+                    keyPropertyB: 'propB',
+                    keyPropertyC: 'propC'
+                }
+            })
+            dynamoAdaptor.batchWrite.callThrough()
+            dynamoAdaptor.buildKey.callThrough()
+            dynamoAdaptor.logger = console
+
+            dynamoAdaptor.dynamoDBClient = sinon.createStubInstance(DynamoDBClient)
+            const err = new TransactionCanceledException('message')
+            err.CancellationReasons = [{ Code: 'some-code' }]
+            dynamoAdaptor.dynamoDBClient.send.rejects(err)
+
+            try {
+                await dynamoAdaptor.batchWrite([
+                    {
+                        op: 'create',
+                        type: 'type',
+                        version: '1.0.0',
+                        data: {
+                            propA: 'val1',
+                            propB: 'val2',
+                            propC: 'val3'
+                        }
+                    }
+                ])
+                return chai.expect.fail(`should have thrown`)
+            } catch (err) {
+                console.error(err)
+                return err.should.be.instanceOf(InvalidRequestError)
+            }
+        })
+
+        it('should handle error if cancellation reasons empty', async function() {
+            const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
+            dynamoAdaptor.typeRegistry.getType.resolves({
+                keyProperties: {
+                    keyPropertyA: 'propA',
+                    keyPropertyB: 'propB',
+                    keyPropertyC: 'propC'
+                }
+            })
+            dynamoAdaptor.batchWrite.callThrough()
+            dynamoAdaptor.buildKey.callThrough()
+            dynamoAdaptor.logger = console
+
+            dynamoAdaptor.dynamoDBClient = sinon.createStubInstance(DynamoDBClient)
+            const err = new TransactionCanceledException('message')
+            err.CancellationReasons = []
+            dynamoAdaptor.dynamoDBClient.send.rejects(err)
+
+            try {
+                await dynamoAdaptor.batchWrite([
+                    {
+                        op: 'create',
+                        type: 'type',
+                        version: '1.0.0',
+                        data: {
+                            propA: 'val1',
+                            propB: 'val2',
+                            propC: 'val3'
+                        }
+                    }
+                ])
+                return chai.expect.fail(`should have thrown`)
+            } catch (err) {
+                console.error(err)
+                return err.should.be.instanceOf(InvalidRequestError)
+            }
+        })
+
+        it('should handle error if cancellation reasons malformed', async function() {
+            const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
+            dynamoAdaptor.typeRegistry.getType.resolves({
+                keyProperties: {
+                    keyPropertyA: 'propA',
+                    keyPropertyB: 'propB',
+                    keyPropertyC: 'propC'
+                }
+            })
+            dynamoAdaptor.batchWrite.callThrough()
+            dynamoAdaptor.buildKey.callThrough()
+            dynamoAdaptor.logger = console
+
+            dynamoAdaptor.dynamoDBClient = sinon.createStubInstance(DynamoDBClient)
+            const err = new TransactionCanceledException('message')
+            err.CancellationReasons = [{}]
+            dynamoAdaptor.dynamoDBClient.send.rejects(err)
+
+            try {
+                await dynamoAdaptor.batchWrite([
+                    {
+                        op: 'create',
+                        type: 'type',
+                        version: '1.0.0',
+                        data: {
+                            propA: 'val1',
+                            propB: 'val2',
+                            propC: 'val3'
+                        }
+                    }
+                ])
+                return chai.expect.fail(`should have thrown`)
+            } catch (err) {
+                console.error(err)
+                return err.should.be.instanceOf(InvalidRequestError)
+            }
+        })
+
+        it('should handle error if cancellation reasons missing', async function() {
+            const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
+            dynamoAdaptor.typeRegistry.getType.resolves({
+                keyProperties: {
+                    keyPropertyA: 'propA',
+                    keyPropertyB: 'propB',
+                    keyPropertyC: 'propC'
+                }
+            })
+            dynamoAdaptor.batchWrite.callThrough()
+            dynamoAdaptor.buildKey.callThrough()
+            dynamoAdaptor.logger = console
+
+            dynamoAdaptor.dynamoDBClient = sinon.createStubInstance(DynamoDBClient)
+            dynamoAdaptor.dynamoDBClient.send.rejects(new TransactionCanceledException('message'))
+
+            try {
+                await dynamoAdaptor.batchWrite([
+                    {
+                        op: 'create',
+                        type: 'type',
+                        version: '1.0.0',
+                        data: {
+                            propA: 'val1',
+                            propB: 'val2',
+                            propC: 'val3'
+                        }
+                    }
+                ])
+                return chai.expect.fail(`should have thrown`)
+            } catch (err) {
+                console.error(err)
+                return err.should.be.instanceOf(InvalidRequestError)
+            }
+        })
+
+
+        it('should throw if error', async function() {
+            const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
+            dynamoAdaptor.typeRegistry.getType.resolves({
+                keyProperties: {
+                    keyPropertyA: 'propA',
+                    keyPropertyB: 'propB',
+                    keyPropertyC: 'propC'
+                }
+            })
+            dynamoAdaptor.batchWrite.callThrough()
+            dynamoAdaptor.buildKey.callThrough()
+            dynamoAdaptor.logger = console
+
+            dynamoAdaptor.dynamoDBClient = sinon.createStubInstance(DynamoDBClient)
+            const err = new Error('message')
+            dynamoAdaptor.dynamoDBClient.send.rejects(err)
+
+            try {
+                await dynamoAdaptor.batchWrite([
+                    {
+                        op: 'create',
+                        type: 'type',
+                        version: '1.0.0',
+                        data: {
+                            propA: 'val1',
+                            propB: 'val2',
+                            propC: 'val3'
+                        }
+                    }
+                ])
+                return chai.expect.fail(`should have thrown`)
+            } catch (err) {
+                console.error(err)
+                return err.should.be.instanceOf(InternalProcessingError)
+            }
+        })
+
 
         it('should do a put if a create op is in the items', async function() {
             const dynamoDocClient = mockClient(DynamoDBDocumentClient)

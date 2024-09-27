@@ -267,6 +267,12 @@ describe('OperationProcessor', function() {
             operationProcessor.variableSubstitutor.substituteInObject.withArgs('response', 'store').returns('final-response')
             return operationProcessor.buildResponse('response', 'store').should.be.eql('final-response')
         })
+
+        it('should return a default response', function() {
+            const operationProcessor = sinon.createStubInstance(OperationProcessor)
+            operationProcessor.buildResponse.callThrough()
+            return operationProcessor.buildResponse(undefined, 'store').should.be.eql({})
+        })
     })
 
     describe('#getProperty', function() {
