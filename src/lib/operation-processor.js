@@ -1,9 +1,8 @@
 const { ReadOperationProcessingError, InvalidOperationError, WriteOperationProcessingError, RedeployShError } = require('../errors')
 
 class OperationProcessor {
-    constructor({ dynamoAdaptor, typeRegistry, operationSorter, variableSubstitutor }) {
+    constructor({ dynamoAdaptor, operationSorter, variableSubstitutor }) {
         this.dynamoAdaptor = dynamoAdaptor
-        this.typeRegistry = typeRegistry
         this.operationSorter = operationSorter
         this.variableSubstitutor = variableSubstitutor
     }

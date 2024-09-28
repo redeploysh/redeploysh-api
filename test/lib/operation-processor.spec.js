@@ -1,10 +1,10 @@
 const chai = require('chai'),
-    chaiAsPromised = require('chai-as-promised'),
     { createSandbox, match } = require('sinon'),
+    chaiAsPromised = require('chai-as-promised'),
     sinonChai = require('sinon-chai'),
-    { Operation, OperationProcessor, VariableSubstitutor } = require('../../src/lib'),
+    { OperationProcessor, VariableSubstitutor } = require('../../src/lib'),
     OperationSorter = require('../../src/lib/operation-sorter'),
-    { TypeRegistry, DynamoAdaptor } = require('../../src/adaptors'),
+    { DynamoAdaptor } = require('../../src/adaptors'),
     { InvalidOperationError, ReadOperationProcessingError, WriteOperationProcessingError } = require('../../src/errors')
 
 chai.should()
@@ -29,7 +29,6 @@ describe('OperationProcessor', function() {
         it('should sort the operations, process the read operations, process the write operations and return the store', function() {
             const operationProcessor = sinon.createStubInstance(OperationProcessor)
             operationProcessor.dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
-            operationProcessor.typeRegistry = sinon.createStubInstance(TypeRegistry)
             operationProcessor.operationSorter = sinon.createStubInstance(OperationSorter)
             operationProcessor.variableSubstitutor = sinon.createStubInstance(VariableSubstitutor)
 
