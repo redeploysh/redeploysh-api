@@ -55,7 +55,7 @@ const graphRequest = {
                         color: '${color}'
                     },
                     'themesByIntensity=@themes#sortedRange(intensity,-1)': '${*}',
-                    'orderedIntensities@themes#sortedRange(intensity,-1)': '${intensity}'
+                    'orderedIntensities=@themes#sortedRange(intensity,-1)': '${intensity}'
                 }
             }
         }
