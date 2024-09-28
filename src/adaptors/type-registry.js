@@ -42,16 +42,6 @@ class TypeRegistry {
 
     async createTypes(definitions) {
         const writeOperations = definitions.map((def) => {
-            let keyProperties = {
-                keyPropertyA: def.keyProperties.keyPropertyA
-            }
-            if (def.keyProperties.keyPropertyB) {
-                keyProperties.keyPropertyB = def.keyProperties.keyPropertyB
-            }
-            if (def.keyProperties.keyPropertyC) {
-                keyProperties.keyPropertyC = def.keyProperties.keyPropertyC
-            }
-
             return {
                 op: 'create',
                 type: 'type',
@@ -59,23 +49,7 @@ class TypeRegistry {
                 data: {
                     type: def.type,
                     version: def.version,
-                    keyProperties
-                    // ,
-                    // validations: def.validations.map((validation) => {
-                    //     if (validation.expression) {
-                    //         return {
-                    //             property: validation.property,
-                    //             expression: validation.expression
-                    //         }
-                    //     } else if (validation.validators) {
-                    //         return {
-                    //             property: validation.property,
-                    //             validators: validation.validators
-                    //         }
-                    //     } else {
-                    //         throw new InvalidTypeError(`Specify 'expression' or 'validators' in your definitions if 'validations' is present`)
-                    //     }
-                    // })
+                    keyProperties: def.keyProperties
                 }
             }
         })

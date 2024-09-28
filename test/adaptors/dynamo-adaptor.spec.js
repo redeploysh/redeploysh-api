@@ -6,7 +6,8 @@ const chai = require('chai'),
     TypeRegistry = require('../../src/adaptors/type-registry'),
     { mockClient } = require('aws-sdk-client-mock'),
     { createSandbox } = require('sinon'),
-    { InvalidOperationError, InternalProcessingError, InvalidRequestError } = require('../../src/errors')
+    { InvalidOperationError, InternalProcessingError, InvalidRequestError } = require('../../src/errors'),
+    Logger = require('../../src/logger')
 
 chai.should()
 chai.use(chaiAsPromised)
@@ -234,7 +235,7 @@ describe('DynamoAdaptor tests', function() {
             })
             dynamoAdaptor.batchWrite.callThrough()
             dynamoAdaptor.buildKey.callThrough()
-            dynamoAdaptor.logger = console
+            dynamoAdaptor.logger = sinon.createStubInstance(Logger)
 
             try {
                 await dynamoAdaptor.batchWrite([
@@ -265,7 +266,7 @@ describe('DynamoAdaptor tests', function() {
             })
             dynamoAdaptor.batchWrite.callThrough()
             dynamoAdaptor.buildKey.callThrough()
-            dynamoAdaptor.logger = console
+            dynamoAdaptor.logger = sinon.createStubInstance(Logger)
 
             dynamoAdaptor.dynamoDBClient = sinon.createStubInstance(DynamoDBClient)
             const err = new TransactionCanceledException('message')
@@ -303,7 +304,7 @@ describe('DynamoAdaptor tests', function() {
             })
             dynamoAdaptor.batchWrite.callThrough()
             dynamoAdaptor.buildKey.callThrough()
-            dynamoAdaptor.logger = console
+            dynamoAdaptor.logger = sinon.createStubInstance(Logger)
 
             dynamoAdaptor.dynamoDBClient = sinon.createStubInstance(DynamoDBClient)
             const err = new TransactionCanceledException('message')
@@ -341,7 +342,7 @@ describe('DynamoAdaptor tests', function() {
             })
             dynamoAdaptor.batchWrite.callThrough()
             dynamoAdaptor.buildKey.callThrough()
-            dynamoAdaptor.logger = console
+            dynamoAdaptor.logger = sinon.createStubInstance(Logger)
 
             dynamoAdaptor.dynamoDBClient = sinon.createStubInstance(DynamoDBClient)
             const err = new TransactionCanceledException('message')
@@ -379,7 +380,7 @@ describe('DynamoAdaptor tests', function() {
             })
             dynamoAdaptor.batchWrite.callThrough()
             dynamoAdaptor.buildKey.callThrough()
-            dynamoAdaptor.logger = console
+            dynamoAdaptor.logger = sinon.createStubInstance(Logger)
 
             dynamoAdaptor.dynamoDBClient = sinon.createStubInstance(DynamoDBClient)
             dynamoAdaptor.dynamoDBClient.send.rejects(new TransactionCanceledException('message'))
@@ -416,7 +417,7 @@ describe('DynamoAdaptor tests', function() {
             })
             dynamoAdaptor.batchWrite.callThrough()
             dynamoAdaptor.buildKey.callThrough()
-            dynamoAdaptor.logger = console
+            dynamoAdaptor.logger = sinon.createStubInstance(Logger)
 
             dynamoAdaptor.dynamoDBClient = sinon.createStubInstance(DynamoDBClient)
             const err = new Error('message')

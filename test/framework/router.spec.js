@@ -76,7 +76,7 @@ describe('Router tests', function() {
                     handler: 'some-handler'
                 }
             }
-            router.logger = new Logger()
+            router.logger = sinon.createStubInstance(Logger)
             const parser = sinon.createStubInstance(ApiGatewayJsonParser)
             parser.parse.throws(new Error('foo'))
             const handler = sinon.createStubInstance(BatchOperationsHandler)

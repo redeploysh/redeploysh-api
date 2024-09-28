@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "redeploy-sh-api-staging"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-xvmxoadb8wpd"
+s3_prefix = "redeploy-sh-api"
+region = "us-east-1"
+capabilities = "CAPABILITY_NAMED_IAM"
+image_repositories = []
+parameter_overrides = "DataTableName=\"redeploy-staging-data-table\""
