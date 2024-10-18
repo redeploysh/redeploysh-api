@@ -2,7 +2,7 @@ const chai = require('chai'),
     { InvalidTypeError } = require('../../src/errors'),
     { createSandbox } = require('sinon'),
     TypeInfoHandler = require('../../src/handlers/type-info-handler'),
-    TypeRegistry = require('../../src/adaptors/type-registry'),
+    { DynamoAdaptor } = require('../../src/adaptors'),
     { InvalidRequestError } = require('../../src/errors')
 
 chai.should()
@@ -11,8 +11,8 @@ const sinon = createSandbox()
 describe('TypeInfoHandler tests', function() {
     describe('#handle', function() {
         it('should handle a type lookup request', async function() {
-            const typeInfoHandler = new TypeInfoHandler({ typeRegistry: sinon.createStubInstance(TypeRegistry) })
-            typeInfoHandler.typeRegistry.getType.withArgs('type', '1.0.0').resolves({
+            const typeInfoHandler = new TypeInfoHandler({ dynamoAdaptor: sinon.createStubInstance(DynamoAdaptor) })
+            typeInfoHandler.dynamoAdaptor.getType.withArgs('type', '1.0.0').resolves({
                 type: 'type',
                 version: '1.0.0',
                 keyProperties: {
@@ -40,8 +40,8 @@ describe('TypeInfoHandler tests', function() {
         })
 
         it('should throw error if missing type', async function() {
-            const typeInfoHandler = new TypeInfoHandler({ typeRegistry: sinon.createStubInstance(TypeRegistry) })
-            typeInfoHandler.typeRegistry.getType.throws(new InvalidTypeError('type', '1.0.0'))
+            const typeInfoHandler = new TypeInfoHandler({ dynamoAdaptor: sinon.createStubInstance(DynamoAdaptor) })
+            typeInfoHandler.dynamoAdaptor.getType.throws(new InvalidTypeError('type', '1.0.0'))
             try {
                 await typeInfoHandler.handle({
                     pathParameters: {
@@ -56,8 +56,8 @@ describe('TypeInfoHandler tests', function() {
         })
 
         it('should return error response if missing version', async function() {
-            const typeInfoHandler = new TypeInfoHandler({ typeRegistry: sinon.createStubInstance(TypeRegistry) })
-            typeInfoHandler.typeRegistry.getType.throws(new InvalidTypeError('type', '1.0.0'))
+            const typeInfoHandler = new TypeInfoHandler({ dynamoAdaptor: sinon.createStubInstance(DynamoAdaptor) })
+            typeInfoHandler.dynamoAdaptor.getType.throws(new InvalidTypeError('type', '1.0.0'))
             try {
                 await typeInfoHandler.handle({
                     pathParameters: {

@@ -3,10 +3,9 @@ const chai = require('chai'),
     DynamoAdaptor = require('../../src/adaptors/dynamo-adaptor'),
     { GetCommand, DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb'),
     { TransactWriteItemsCommand, TransactionCanceledException, DynamoDBClient } = require('@aws-sdk/client-dynamodb'),
-    TypeRegistry = require('../../src/adaptors/type-registry'),
     { mockClient } = require('aws-sdk-client-mock'),
     { createSandbox } = require('sinon'),
-    { InvalidOperationError, InternalProcessingError, InvalidRequestError } = require('../../src/errors'),
+    { InvalidOperationError, InternalProcessingError, InvalidRequestError, InvalidTypeError } = require('../../src/errors'),
     Logger = require('../../src/logger')
 
 chai.should()
@@ -40,8 +39,7 @@ describe('DynamoAdaptor tests', function() {
             }).resolves({ })
 
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
-            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').resolves({
+            dynamoAdaptor.getType.withArgs('test-type', 'test-version').resolves({
                 keyProperties: {
                     keyPropertyA: 'some-propA'
                 }
@@ -80,8 +78,7 @@ describe('DynamoAdaptor tests', function() {
             })
 
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
-            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').resolves({
+            dynamoAdaptor.getType.withArgs('test-type', 'test-version').resolves({
                 keyProperties: {
                     keyPropertyA: 'some-propA'
                 }
@@ -123,8 +120,7 @@ describe('DynamoAdaptor tests', function() {
             })
 
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
-            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').resolves({
+            dynamoAdaptor.getType.withArgs('test-type', 'test-version').resolves({
                 keyProperties: {
                     keyPropertyA: 'some-propA',
                     keyPropertyB: 'some-propB'
@@ -161,8 +157,7 @@ describe('DynamoAdaptor tests', function() {
             })
 
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
-            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').resolves({
+            dynamoAdaptor.getType.withArgs('test-type', 'test-version').resolves({
                 keyProperties: {
                     keyPropertyA: 'some-propA',
                     keyPropertyB: 'some-propB',
@@ -196,8 +191,7 @@ describe('DynamoAdaptor tests', function() {
             }).rejects(new Error('some-message'))
 
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
-            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').returns({
+            dynamoAdaptor.getType.withArgs('test-type', 'test-version').returns({
                 keyPropertyA: 'some-propA',
                 keyPropertyB: 'some-propB',
                 keyPropertyC: 'some-propC'
@@ -223,10 +217,15 @@ describe('DynamoAdaptor tests', function() {
     })
 
     describe('#batchWrite', function() {
+        it('should return if empty operations', function() {
+            const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            dynamoAdaptor.batchWrite.callThrough()
+            return dynamoAdaptor.batchWrite([]).should.eventually.be.eql({})
+        })
+
         it('should throw if unsupported operation in batch', async function() {
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
-            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.resolves({
+            dynamoAdaptor.getType.resolves({
                 keyProperties: {
                     keyPropertyA: 'propA',
                     keyPropertyB: 'propB',
@@ -256,8 +255,7 @@ describe('DynamoAdaptor tests', function() {
 
         it('should throw if transaction cancelled', async function() {
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
-            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.resolves({
+            dynamoAdaptor.getType.resolves({
                 keyProperties: {
                     keyPropertyA: 'propA',
                     keyPropertyB: 'propB',
@@ -294,8 +292,7 @@ describe('DynamoAdaptor tests', function() {
 
         it('should handle error if cancellation reasons empty', async function() {
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
-            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.resolves({
+            dynamoAdaptor.getType.resolves({
                 keyProperties: {
                     keyPropertyA: 'propA',
                     keyPropertyB: 'propB',
@@ -332,8 +329,8 @@ describe('DynamoAdaptor tests', function() {
 
         it('should handle error if cancellation reasons malformed', async function() {
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
-            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.resolves({
+
+            dynamoAdaptor.getType.resolves({
                 keyProperties: {
                     keyPropertyA: 'propA',
                     keyPropertyB: 'propB',
@@ -370,8 +367,8 @@ describe('DynamoAdaptor tests', function() {
 
         it('should handle error if cancellation reasons missing', async function() {
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
-            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.resolves({
+
+            dynamoAdaptor.getType.resolves({
                 keyProperties: {
                     keyPropertyA: 'propA',
                     keyPropertyB: 'propB',
@@ -407,8 +404,8 @@ describe('DynamoAdaptor tests', function() {
 
         it('should throw if error', async function() {
             const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
-            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.resolves({
+
+            dynamoAdaptor.getType.resolves({
                 keyProperties: {
                     keyPropertyA: 'propA',
                     keyPropertyB: 'propB',
@@ -485,19 +482,19 @@ describe('DynamoAdaptor tests', function() {
                 hKey: 'hKey',
                 rKey: 'rKey'
             })
-            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type-one-key', 'test-version').resolves({
+
+            dynamoAdaptor.getType.withArgs('test-type-one-key', 'test-version').resolves({
                 keyProperties: {
                     keyPropertyA: 'some-propA'
                 }
             })
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').resolves({
+            dynamoAdaptor.getType.withArgs('test-type', 'test-version').resolves({
                 keyProperties: {
                     keyPropertyA: 'some-propA',
                     keyPropertyB: 'some-propB'
                 }
             })
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type-three-keys', 'test-version').resolves({
+            dynamoAdaptor.getType.withArgs('test-type-three-keys', 'test-version').resolves({
                 keyProperties: {
                     keyPropertyA: 'some-propA',
                     keyPropertyB: 'some-propB',
@@ -567,8 +564,8 @@ describe('DynamoAdaptor tests', function() {
                 hKey: 'hKey',
                 rKey: 'rKey'
             })
-            dynamoAdaptor.typeRegistry = sinon.createStubInstance(TypeRegistry)
-            dynamoAdaptor.typeRegistry.getType.withArgs('test-type', 'test-version').resolves({
+
+            dynamoAdaptor.getType.withArgs('test-type', 'test-version').resolves({
                 keyProperties: {
                     keyPropertyA: 'some-propA'
                 }
@@ -616,6 +613,127 @@ describe('DynamoAdaptor tests', function() {
                 hKey: 'type:version:value:archived=false',
                 rKey: 'value:value'
             })
+        })
+    })
+
+    describe('#getType', function() {
+        it('should return a predefined type', function() {
+            const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            dynamoAdaptor.getType.callThrough()
+            return dynamoAdaptor.getType('type', '1.0.0').should.eventually.be.eql({
+                keyProperties: {
+                    keyPropertyA: 'type',
+                    keyPropertyB: 'version'
+                }
+            })
+        })
+
+        it('should return the key property names', function() {
+            const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            dynamoAdaptor.getType.callThrough()
+            dynamoAdaptor.get.withArgs({
+                type: 'type',
+                version: '1.0.0',
+                key: {
+                    type: 'user',
+                    version: '1.0.1'
+                }
+            }).resolves({
+                keyProperties: 'key-properties'
+            })
+
+            return dynamoAdaptor.getType('user', '1.0.1').should.eventually.be.eql({
+                keyProperties: 'key-properties'
+            })
+        })
+
+        it('should throw invalid type error', function() {
+            const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            dynamoAdaptor.getType.callThrough()
+            dynamoAdaptor.get.withArgs({
+                type: 'type',
+                version: '1.0.0',
+                key: {
+                    type: 'user',
+                    version: '1.0.1'
+                }
+            }).resolves(undefined)
+            return dynamoAdaptor.getType('user', '1.0.1').should.eventually.be.rejectedWith(InvalidTypeError)
+        })
+    })
+
+    describe('#createTypes', function() {
+        it('should write the definitions to the database', function() {
+            const dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            dynamoAdaptor.createTypes.callThrough()
+            dynamoAdaptor.batchWrite.withArgs([
+                {
+                    op: 'create',
+                    type: 'type',
+                    version: '1.0.0',
+                    data: {
+                        type: 'some-type',
+                        version: 'some-version',
+                        keyProperties: {
+                            keyPropertyA: 'somePropertyA',
+                            keyPropertyB: 'somePropertyB',
+                            keyPropertyC: 'somePropertyC'
+                        }
+                    }
+                },
+                {
+                    op: 'create',
+                    type: 'type',
+                    version: '1.0.0',
+                    data: {
+                        type: 'some-type',
+                        version: 'some-version',
+                        keyProperties: {
+                            keyPropertyA: 'somePropertyA',
+                            keyPropertyB: 'somePropertyB',
+                        }
+                    }
+                },
+                {
+                    op: 'create',
+                    type: 'type',
+                    version: '1.0.0',
+                    data: {
+                        type: 'some-type',
+                        version: 'some-version',
+                        keyProperties: {
+                            keyPropertyA: 'somePropertyA',
+                        }
+                    }
+                }
+            ]).resolves('result')
+
+            return dynamoAdaptor.createTypes([
+                {
+                    type: 'some-type',
+                    version: 'some-version',
+                    keyProperties: {
+                        keyPropertyA: 'somePropertyA',
+                        keyPropertyB: 'somePropertyB',
+                        keyPropertyC: 'somePropertyC'
+                    }
+                },
+                {
+                    type: 'some-type',
+                    version: 'some-version',
+                    keyProperties: {
+                        keyPropertyA: 'somePropertyA',
+                        keyPropertyB: 'somePropertyB',
+                    }
+                },
+                {
+                    type: 'some-type',
+                    version: 'some-version',
+                    keyProperties: {
+                        keyPropertyA: 'somePropertyA',
+                    }
+                }
+            ]).should.eventually.be.eql('result')
         })
     })
 })

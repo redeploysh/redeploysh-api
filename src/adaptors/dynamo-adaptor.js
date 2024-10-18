@@ -1,10 +1,18 @@
 const { GetCommand, DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb'),
     { TransactWriteItemsCommand, TransactionCanceledException } = require('@aws-sdk/client-dynamodb'),
-    { InternalProcessingError, InvalidOperationError, InvalidRequestError } = require('../errors')
+    { InternalProcessingError, InvalidOperationError, InvalidRequestError, InvalidTypeError } = require('../errors')
+
+const types = {
+    'type': {
+        '1.0.0': {
+            keyPropertyA: 'type',
+            keyPropertyB: 'version'
+        }
+    }
+}
 
 class DynamoAdaptor {
-    constructor({ typeRegistry, dynamoDBClient, dataTableName, logger }) {
-        this.typeRegistry = typeRegistry
+    constructor({ dynamoDBClient, dataTableName, logger }) {
         this.dynamoDBClient = dynamoDBClient
         this.dataTableName = dataTableName
         this.dynamoDBDocumentClient = this.createDocumentClient(dynamoDBClient)
@@ -24,7 +32,7 @@ class DynamoAdaptor {
 
     async get({ type, version, key }) {
         try {
-            const { keyProperties: { keyPropertyA, keyPropertyB, keyPropertyC } } = await this.typeRegistry.getType(type, version)
+            const { keyProperties: { keyPropertyA, keyPropertyB, keyPropertyC } } = await this.getType(type, version)
             const command = new GetCommand({
                 TableName: this.dataTableName,
                 Key: this.buildKey(type, version, key[keyPropertyA], keyPropertyB ? key[keyPropertyB] : '', keyPropertyC ? keyPropertyC : '')
@@ -37,11 +45,14 @@ class DynamoAdaptor {
     }
 
     async batchWrite(items) {
+        if (items.length === 0) {
+            return {}
+        }
 
         const transactItems = []
         const errors = []
         for (let { op, type, version, data } of items) {
-            const { keyProperties: { keyPropertyA, keyPropertyB, keyPropertyC } } = await this.typeRegistry.getType(type, version)
+            const { keyProperties: { keyPropertyA, keyPropertyB, keyPropertyC } } = await this.getType(type, version)
             const { hKey, rKey } = this.buildKey(type, version, data[keyPropertyA], keyPropertyB ? data[keyPropertyB] : undefined, keyPropertyC ? data[keyPropertyC] : undefined)
             if (op === 'create') {
                 transactItems.push({
@@ -94,6 +105,48 @@ class DynamoAdaptor {
                 throw new InternalProcessingError(err)
             }
         }
+    }
+
+    async getType(type, version) {
+        if (types[type] && types[type][version]) {
+            return {
+                keyProperties: types[type][version]
+            }
+        }
+
+        const typeData = await this.get({
+            'type': 'type',
+            'version': '1.0.0',
+            key: {
+                type,
+                version
+            }
+        })
+
+        if (!typeData) {
+            throw new InvalidTypeError(type, version)
+        }
+
+        return {
+            keyProperties: typeData.keyProperties
+        }
+    }
+
+    async createTypes(definitions) {
+        const writeOperations = definitions.map((def) => {
+            return {
+                op: 'create',
+                type: 'type',
+                version: '1.0.0',
+                data: {
+                    type: def.type,
+                    version: def.version,
+                    keyProperties: def.keyProperties
+                }
+            }
+        })
+
+        return await this.batchWrite(writeOperations)
     }
 }
 

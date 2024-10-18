@@ -1,9 +1,9 @@
 const chai = require('chai'),
     BatchOperationsHandler = require('../../src/handlers/batch-operations-handler'),
     OperationProcessor = require('../../src/lib/operation-processor'),
-    TypeRegistry = require('../../src/adaptors/type-registry'),
     { Definition, Operation } = require('../../src/lib'),
-    { createSandbox } = require('sinon')
+    { createSandbox } = require('sinon'),
+    { DynamoAdaptor } = require('../../src/adaptors')
 
 chai.should()
 
@@ -65,15 +65,33 @@ describe('BatchOperationsHandler tests', function() {
             })
         })
 
+        it('should handle an empty operations list', function() {
+            const handler = sinon.createStubInstance(BatchOperationsHandler)
+            handler.handle.callThrough()
+            handler.deserializeOperations.withArgs([]).resolves([])
+            handler.operationProcessor = sinon.createStubInstance(OperationProcessor)
+            handler.operationProcessor.buildResponse.returns('response')
+
+            return handler.handle({
+                body: {
+                    operations: [],
+                    response: 'resp'
+                }
+            }).should.eventually.be.eql({
+                statusCode: 200,
+                body: 'response'
+            })
+        })
+
         it('should handle the request with definitions present', function() {
             const handler = sinon.createStubInstance(BatchOperationsHandler)
             handler.handle.callThrough()
 
-            handler.typeRegistry = sinon.createStubInstance(TypeRegistry)
             handler.operationProcessor = sinon.createStubInstance(OperationProcessor)
 
             handler.deserializeDefinitions.withArgs('defs').returns('types')
-            handler.typeRegistry.createTypes.withArgs('types').resolves()
+            handler.dynamoAdaptor = sinon.createStubInstance(DynamoAdaptor)
+            handler.dynamoAdaptor.createTypes.withArgs('types').resolves()
 
             handler.deserializeOperations
                 .withArgs('ops')

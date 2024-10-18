@@ -1,9 +1,9 @@
 const { Definition, Operation } = require('../lib')
 
 class BatchOperationsHandler {
-    constructor({ operationProcessor, typeRegistry }) {
+    constructor({ operationProcessor, dynamoAdaptor }) {
         this.operationProcessor = operationProcessor
-        this.typeRegistry = typeRegistry
+        this.dynamoAdaptor = dynamoAdaptor
     }
 
     deserializeDefinitions(definitions) {
@@ -17,10 +17,13 @@ class BatchOperationsHandler {
 
     async handle({ body }) {
         if (body.definitions) {
-            await this.typeRegistry.createTypes(this.deserializeDefinitions(body.definitions))
+            await this.dynamoAdaptor.createTypes(this.deserializeDefinitions(body.definitions))
         }
         const operations = this.deserializeOperations(body.operations)
-        const store = await this.operationProcessor.process(operations)
+        const store = (operations.length > 0)
+            ? await this.operationProcessor.process(operations)
+            : {}
+
         return {
             statusCode: 200,
             body: this.operationProcessor.buildResponse(body.response, store)
